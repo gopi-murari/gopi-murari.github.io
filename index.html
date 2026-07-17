@@ -159,54 +159,52 @@ delivery surface : compromised gov hosts
 detection focus  : behavior + build chain</code></pre>
   </div>
 </div>
-<div class="featured-research reveal">
+<div class="featured-research reveal dll-research">
 
-    <div class="research-copy">
+  <div class="research-copy">
 
-        <span class="section-label">
-            CASE FILE 003 / WINDOWS SECURITY
-        </span>
-
-        <h3>
-            DLL Hijacking: From Standard User to Administrator Shell
-        </h3>
-
-        <p class="research-subtitle">
-            A real-world investigation into unsafe DLL loading and privilege escalation.
-        </p>
-
-        <p>
-            An anonymized engineering case study examining how a trusted Windows
-            application loaded an attacker-controlled DLL, crossed a privilege
-            boundary and exposed an elevated command shell.
-        </p>
-
-        <div class="research-tags">
-            <span>DLL Hijacking</span>
-            <span>Windows Internals</span>
-            <span>Privilege Escalation</span>
-            <span>Threat Hunting</span>
-            <span>Detection Engineering</span>
-        </div>
-
-        <div class="research-actions">
-            <a href="/research/dll-hijacking/" class="btn primary">
-                Read Technical Analysis
-            </a>
-        </div>
-
+    <div class="case-label">
+      CASE FILE 003 · JULY 2026 · 20 MIN READ
     </div>
 
-    <div class="research-console">
+    <h3>DLL HIJACKING</h3>
 
-        <div class="terminal-top">
-            <i></i>
-            <i></i>
-            <i></i>
-            <span>dll-hijack-analysis</span>
-        </div>
+    <p class="research-subtitle">
+      From Standard User to Administrator Shell
+    </p>
 
-        <pre><code>$ analyze --case DLL-HIJACKING
+    <p>
+      An anonymized engineering case study examining how a trusted Windows
+      application loaded an attacker-controlled DLL, crossed a privilege
+      boundary and exposed an elevated command shell.
+    </p>
+
+    <div class="tags">
+      <span>DLL Hijacking</span>
+      <span>Windows Internals</span>
+      <span>Privilege Escalation</span>
+      <span>Threat Hunting</span>
+      <span>Detection Engineering</span>
+    </div>
+
+    <div class="research-actions">
+      <a href="/research/dll-hijacking/" class="btn primary">
+        Read Technical Analysis
+      </a>
+    </div>
+
+  </div>
+
+  <div class="research-console">
+
+    <div class="terminal-top">
+      <i></i>
+      <i></i>
+      <i></i>
+      <span>dll-hijack-analysis</span>
+    </div>
+
+    <pre><code>$ analyze --case DLL-HIJACKING
 
 [01] Standard user launch   normal
 [02] Crafted DLL dropped    detected
@@ -218,7 +216,7 @@ technique  : T1574.001
 root cause : unsafe DLL resolution
 status     : resolved and remediated</code></pre>
 
-    </div>
+  </div>
 
 </div>
 </section>
