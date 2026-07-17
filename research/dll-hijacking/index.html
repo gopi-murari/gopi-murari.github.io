@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A real-world QA case study on DLL search order hijacking, privilege misuse, detection engineering, and secure Windows application design." />
+  <title>When a Standard User Spawned an Administrator Command Prompt | Gopichand Murari</title>
+  <style>
+    :root{
+      --bg:#070b12;
+      --panel:#0d1420;
+      --panel-2:#111b2a;
+      --text:#e8eef7;
+      --muted:#9fb0c3;
+      --accent:#4dd0e1;
+      --accent-2:#7ee787;
+      --danger:#ff7b72;
+      --border:#223047;
+      --code:#0a1019;
+      --shadow:0 20px 60px rgba(0,0,0,.35);
+      --max:1160px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(77,208,225,.08), transparent 28%),
+        radial-gradient(circle at 85% 20%, rgba(126,231,135,.06), transparent 24%),
+        var(--bg);
+      color:var(--text);
+      line-height:1.72;
+    }
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{width:min(var(--max),calc(100% - 40px));margin:auto}
+    .topbar{
+      position:sticky;top:0;z-index:20;
+      backdrop-filter:blur(14px);
+      background:rgba(7,11,18,.82);
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .topbar-inner{
+      display:flex;justify-content:space-between;align-items:center;
+      min-height:66px;gap:20px;
+    }
+    .brand{font-weight:800;letter-spacing:.02em;color:#fff}
+    .nav{display:flex;gap:18px;flex-wrap:wrap;font-size:.95rem}
+    .hero{padding:88px 0 54px}
+    .eyebrow{
+      display:inline-flex;gap:10px;align-items:center;
+      padding:8px 12px;border:1px solid var(--border);
+      border-radius:999px;color:var(--accent);font-size:.8rem;
+      letter-spacing:.12em;text-transform:uppercase;background:rgba(255,255,255,.02)
+    }
+    h1{
+      font-size:clamp(2.6rem,7vw,5.4rem);
+      line-height:1.03;margin:22px 0 20px;max-width:980px;
+      letter-spacing:-.04em;
+    }
+    .subtitle{
+      max-width:860px;font-size:clamp(1.08rem,2vw,1.35rem);color:var(--muted)
+    }
+    .meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+    .pill{
+      padding:8px 12px;border-radius:999px;
+      border:1px solid var(--border);background:var(--panel);
+      color:#c8d4e3;font-size:.88rem
+    }
+    .hero-card{
+      margin-top:40px;padding:28px;border:1px solid var(--border);
+      background:linear-gradient(180deg,rgba(17,27,42,.95),rgba(13,20,32,.96));
+      border-radius:20px;box-shadow:var(--shadow);
+      display:grid;grid-template-columns:1.3fr .7fr;gap:24px
+    }
+    .hero-card strong{color:#fff}
+    .risk-box{
+      border-left:3px solid var(--danger);
+      padding:18px;background:rgba(255,123,114,.06);border-radius:12px
+    }
+    main{padding:20px 0 90px}
+    .layout{display:grid;grid-template-columns:260px 1fr;gap:42px}
+    .toc{
+      position:sticky;top:90px;align-self:start;
+      border:1px solid var(--border);background:var(--panel);
+      border-radius:16px;padding:20px
+    }
+    .toc h3{margin-top:0;font-size:1rem}
+    .toc a{display:block;color:var(--muted);padding:6px 0;font-size:.9rem}
+    article section{scroll-margin-top:90px;margin-bottom:62px}
+    h2{
+      font-size:clamp(1.8rem,3vw,2.5rem);line-height:1.2;
+      margin:0 0 18px;letter-spacing:-.025em
+    }
+    h3{font-size:1.28rem;margin-top:30px}
+    p{color:#cbd6e3}
+    .lead{font-size:1.15rem}
+    .callout{
+      border:1px solid var(--border);background:var(--panel);
+      border-radius:16px;padding:22px;margin:24px 0
+    }
+    .callout.info{border-left:4px solid var(--accent)}
+    .callout.good{border-left:4px solid var(--accent-2)}
+    .callout.warn{border-left:4px solid var(--danger)}
+    blockquote{
+      margin:28px 0;padding:22px 26px;border-left:4px solid var(--accent);
+      background:rgba(77,208,225,.06);border-radius:0 14px 14px 0;
+      color:#f2f6fb;font-size:1.2rem
+    }
+    pre{
+      overflow:auto;background:var(--code);border:1px solid var(--border);
+      border-radius:14px;padding:18px;color:#dce7f3;font-size:.9rem
+    }
+    code{font-family:Consolas,Monaco,monospace}
+    .diagram{
+      background:var(--code);border:1px solid var(--border);
+      border-radius:16px;padding:24px;margin:24px 0;
+      white-space:pre-wrap;color:#dce7f3;font-family:Consolas,monospace
+    }
+    table{
+      width:100%;border-collapse:collapse;margin:24px 0;
+      border:1px solid var(--border);background:var(--panel);border-radius:14px;overflow:hidden
+    }
+    th,td{padding:14px 16px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+    th{background:var(--panel-2);color:#fff}
+    td{color:#cbd6e3}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .card{
+      border:1px solid var(--border);background:var(--panel);
+      border-radius:16px;padding:20px
+    }
+    .card h3{margin-top:0}
+    .footer{
+      border-top:1px solid var(--border);padding:40px 0 60px;color:var(--muted)
+    }
+    .disclaimer{
+      font-size:.9rem;color:var(--muted);padding:18px;border:1px dashed var(--border);
+      border-radius:14px;background:rgba(255,255,255,.015)
+    }
+    @media(max-width:900px){
+      .layout{grid-template-columns:1fr}
+      .toc{position:relative;top:0}
+      .hero-card{grid-template-columns:1fr}
+      .grid{grid-template-columns:1fr}
+    }
+    @media(max-width:640px){
+      .nav{display:none}
+      .container{width:min(100% - 24px,var(--max))}
+      .hero{padding-top:58px}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/">GOPICHAND MURARI</a>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/#research">Research</a>
+        <a href="https://www.linkedin.com/" target="_blank" rel="noopener">LinkedIn</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <div class="eyebrow">Case File 003 · Windows Security · July 2026</div>
+      <h1>When a Standard User Spawned an Administrator Command Prompt</h1>
+      <p class="subtitle">
+        An anonymized engineering case study on DLL search order hijacking, unsafe library loading,
+        privilege misuse, Windows internals, detection engineering, and secure application design.
+      </p>
+      <div class="meta">
+        <span class="pill">By Gopichand Murari</span>
+        <span class="pill">15–20 minute read</span>
+        <span class="pill">DLL Hijacking</span>
+        <span class="pill">Threat Hunting</span>
+        <span class="pill">Detection Engineering</span>
+      </div>
+
+      <div class="hero-card">
+        <div>
+          <strong>Observed behavior:</strong>
+          <p>
+            A standard user could launch the application normally without elevated privileges. After a crafted DLL
+            was placed in the application directory, launching the same application caused attacker-controlled code
+            to execute in a privileged application context and resulted in an elevated command shell.
+          </p>
+        </div>
+        <div class="risk-box">
+          <strong>Security impact</strong>
+          <p>Privilege misuse, arbitrary code execution in a trusted process, defense evasion, and potential persistence.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="container">
+    <div class="layout">
+      <aside class="toc">
+        <h3>Contents</h3>
+        <a href="#executive-summary">Executive Summary</a>
+        <a href="#story">The Story</a>
+        <a href="#background">DLL Loading Background</a>
+        <a href="#investigation">Investigation</a>
+        <a href="#root-cause">Root Cause</a>
+        <a href="#privilege">Why the Admin Shell Appeared</a>
+        <a href="#attack-flow">Attack Flow</a>
+        <a href="#detection">Detection Engineering</a>
+        <a href="#splunk">Splunk</a>
+        <a href="#sentinel">Microsoft Sentinel</a>
+        <a href="#sigma">Sigma</a>
+        <a href="#mitre">MITRE ATT&CK</a>
+        <a href="#prevention">Prevention</a>
+        <a href="#response">Incident Response</a>
+        <a href="#lessons">Lessons Learned</a>
+      </aside>
+
+      <article>
+        <section id="executive-summary">
+          <h2>Executive Summary</h2>
+          <p class="lead">
+            During quality assurance testing of a commercial Windows application, I encountered a vulnerability
+            in which the application loaded an attacker-controlled DLL from its installation directory.
+          </p>
+          <p>
+            Under normal conditions, a non-administrative user launched the application and it behaved as expected.
+            However, when a crafted library with a name expected by the application was placed in the application
+            directory, Windows loaded that library during startup. The DLL executed inside the trusted application
+            process and resulted in an elevated command prompt being presented to the standard user.
+          </p>
+          <div class="callout info">
+            <strong>Important distinction:</strong>
+            <p>
+              DLL hijacking explains how attacker-controlled code entered the process. The elevated outcome depended
+              on the application's privileged execution model, service interaction, helper process, scheduled task,
+              inherited token, or another trusted component. DLL loading alone does not automatically elevate privileges.
+            </p>
+          </div>
+          <p>
+            The issue was reproduced in a controlled environment, documented, escalated to engineering, and remediated.
+            This case study focuses on the defensive lessons: how to identify the root cause, detect exploitation,
+            and prevent similar weaknesses in Windows applications.
+          </p>
+        </section>
+
+        <section id="story">
+          <h2>The Story</h2>
+          <p>Everything looked normal.</p>
+          <p>
+            A standard Windows user signed in and launched the application. There was no UAC prompt, no administrator
+            token, and no unusual child process. Application functions and permissions behaved as designed.
+          </p>
+          <p>Then one variable changed.</p>
+          <p>
+            A DLL was placed in the application's directory. The user launched the same executable again.
+            This time, an administrator command prompt appeared.
+          </p>
+          <blockquote>
+            The executable had not changed. The user had not changed. The application had trusted different code.
+          </blockquote>
+          <p>
+            The investigation shifted from “why did Windows elevate this user?” to a more useful question:
+            “what library did the application load, from where, and under which security context?”
+          </p>
+        </section>
+
+        <section id="background">
+          <h2>How DLL Search Order Hijacking Works</h2>
+          <p>
+            Windows applications use Dynamic Link Libraries to reuse code. A program may resolve DLL dependencies
+            during startup through its import table or load them dynamically at runtime through functions such as
+            <code>LoadLibrary</code> and <code>LoadLibraryEx</code>.
+          </p>
+          <p>
+            When an application specifies only a DLL filename rather than a trusted absolute path, the Windows loader
+            searches a sequence of locations. The exact order varies according to application configuration, Windows
+            version, Safe DLL Search Mode, KnownDLLs, packaged-app rules, redirection, manifests, and the flags used.
+          </p>
+
+          <div class="diagram">Application.exe
+      │
+      ├── Requests "example.dll"
+      │
+      ▼
+Windows Loader
+      │
+      ├── Checks loader rules and KnownDLLs
+      ├── Checks application-related locations
+      ├── Checks Windows system directories
+      ├── Checks current directory / configured search paths
+      ▼
+First matching DLL is loaded</div>
+
+          <div class="callout warn">
+            <strong>The weakness:</strong>
+            <p>
+              A standard user must be able to influence a directory searched before the legitimate library, or replace
+              a DLL in a location the application trusts. If the application directory is properly protected, simply
+              being a standard user should not be enough to drop a DLL there.
+            </p>
+          </div>
+        </section>
+
+        <section id="investigation">
+          <h2>The Investigation</h2>
+
+          <h3>1. Establish the baseline</h3>
+          <p>
+            The first step was to capture normal behavior: process tree, loaded modules, file access, token integrity,
+            application services, and child processes. A clean baseline made the altered launch easy to compare.
+          </p>
+
+          <h3>2. Observe file and image loading</h3>
+          <p>
+            Process Monitor and EDR image-load telemetry can reveal the exact DLL path selected by the loader.
+            Useful filters include the application process name, <em>Load Image</em> operations, and unsuccessful
+            attempts such as <code>NAME NOT FOUND</code>.
+          </p>
+
+          <h3>3. Compare security contexts</h3>
+          <p>
+            The application process, helper process, service, and resulting shell should be compared for:
+            user SID, integrity level, elevation type, parent-child relationship, token source, and session.
+          </p>
+
+          <h3>4. Validate write permissions</h3>
+          <p>
+            Access control on the installation directory is critical. A weak ACL allowing standard users to create
+            or replace DLLs can transform unsafe loading behavior into a practical local privilege escalation path.
+          </p>
+
+          <h3>5. Confirm causality</h3>
+          <p>
+            Removing the crafted DLL should restore normal behavior. Renaming it should prevent loading. Reintroducing
+            it should reproduce the result. This controlled repetition separates causation from coincidence.
+          </p>
+        </section>
+
+        <section id="root-cause">
+          <h2>Root Cause Analysis</h2>
+          <p>The vulnerability required a chain of trust failures rather than one isolated defect.</p>
+
+          <table>
+            <thead>
+              <tr><th>Condition</th><th>Why it mattered</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Unsafe DLL resolution</td><td>The application requested a library without restricting the loader to a trusted location.</td></tr>
+              <tr><td>User-controlled placement</td><td>A standard user could place or influence a DLL in a searched directory.</td></tr>
+              <tr><td>Trusted execution context</td><td>The DLL executed within a process or component with access beyond the user's normal privileges.</td></tr>
+              <tr><td>Dangerous child-process behavior</td><td>The compromised process could create an elevated shell or invoke a privileged helper.</td></tr>
+            </tbody>
+          </table>
+
+          <div class="grid">
+            <div class="card">
+              <h3>Unsafe pattern</h3>
+              <pre><code>HMODULE module =
+    LoadLibraryW(L"example.dll");</code></pre>
+              <p>The loader must search for the library using configured search rules.</p>
+            </div>
+            <div class="card">
+              <h3>Safer pattern</h3>
+              <pre><code>HMODULE module = LoadLibraryExW(
+    L"example.dll",
+    NULL,
+    LOAD_LIBRARY_SEARCH_SYSTEM32
+);</code></pre>
+              <p>The search is restricted to a trusted location when the dependency belongs in System32.</p>
+            </div>
+          </div>
+
+          <p>
+            For application-owned libraries, the safer design is to build a canonical absolute path from a protected
+            installation directory and use appropriate <code>LoadLibraryEx</code> flags. Developers should also consider
+            <code>SetDefaultDllDirectories</code> and <code>AddDllDirectory</code>.
+          </p>
+        </section>
+
+        <section id="privilege">
+          <h2>Why Did an Administrator Command Prompt Appear?</h2>
+          <p>
+            A malicious DLL normally executes with the privileges of the process that loads it. Therefore, the elevated
+            result indicates that the vulnerable application interacted with an already elevated component or possessed
+            a privileged execution path.
+          </p>
+          <p>Possible architectures include:</p>
+          <ul>
+            <li>A privileged Windows service loading or acting on data controlled by the user-facing application.</li>
+            <li>An auto-elevated helper executable or broker process.</li>
+            <li>A scheduled task configured to run with highest privileges.</li>
+            <li>An elevated updater, maintenance component, or service control channel.</li>
+            <li>A privileged process that loaded the DLL directly from an unsafe location.</li>
+          </ul>
+          <div class="callout good">
+            <strong>Key analytical point:</strong>
+            <p>
+              The DLL hijack was the code-execution mechanism. The privilege boundary failure was the application
+              architecture that allowed that code to execute or trigger actions in an elevated context.
+            </p>
+          </div>
+        </section>
+
+        <section id="attack-flow">
+          <h2>Attack Flow</h2>
+          <div class="diagram">Standard User
+    │
+    ├── Gains write access to searched directory
+    │
+    ├── Places crafted DLL using expected filename
+    │
+    ▼
+Launches Application.exe
+    │
+    ▼
+Windows loader resolves dependency
+    │
+    ├── Attacker-controlled DLL found first
+    ▼
+DLL executes inside trusted process
+    │
+    ├── Invokes privileged helper / service path
+    ▼
+Elevated cmd.exe is created</div>
+        </section>
+
+        <section id="detection">
+          <h2>Detection Engineering</h2>
+          <p>
+            Reliable detection should correlate library loading with path trust, signing status, file creation,
+            process ancestry, and privilege context. Alerting on every non-System32 DLL will produce excessive noise.
+          </p>
+
+          <table>
+            <thead><tr><th>Telemetry</th><th>Detection value</th></tr></thead>
+            <tbody>
+              <tr><td>Sysmon Event ID 7</td><td>Records image loads when enabled; useful for unexpected DLL paths and signatures.</td></tr>
+              <tr><td>Sysmon Event ID 11</td><td>Shows creation of a DLL shortly before application launch.</td></tr>
+              <tr><td>Sysmon Event ID 1</td><td>Correlates the compromised application with suspicious child processes such as cmd.exe.</td></tr>
+              <tr><td>EDR image-load events</td><td>Often provide signer, prevalence, hash, process, and path context.</td></tr>
+              <tr><td>File ACL auditing</td><td>Identifies weak permissions in privileged application directories.</td></tr>
+            </tbody>
+          </table>
+
+          <h3>High-value behavioral sequence</h3>
+          <div class="diagram">New or modified DLL
+        +
+User-writable / unexpected path
+        +
+Loaded by trusted application
+        +
+Unsigned or low-prevalence module
+        +
+Elevated shell or unusual child process</div>
+        </section>
+
+        <section id="splunk">
+          <h2>Splunk Detection Examples</h2>
+
+          <h3>Unexpected DLL loaded by a sensitive application</h3>
+          <pre><code>index=sysmon EventCode=7
+| eval dll_path=lower(ImageLoaded)
+| where like(dll_path, "%.dll")
+| where NOT like(dll_path, "c:\\windows\\system32\\%")
+| stats count min(_time) as first_seen max(_time) as last_seen
+        values(Signed) as signed
+        values(Signature) as signer
+        by host Image ImageLoaded ProcessGuid
+| where signed!="true" OR isnull(signed)</code></pre>
+
+          <h3>DLL creation followed by application launch</h3>
+          <pre><code>index=sysmon (EventCode=11 TargetFilename="*.dll") OR EventCode=1
+| eval correlation_path=coalesce(TargetFilename, Image)
+| transaction host maxspan=5m
+| search EventCode=11 EventCode=1
+| table _time host User Image ParentImage CommandLine TargetFilename</code></pre>
+
+          <h3>Trusted application spawning an elevated shell</h3>
+          <pre><code>index=sysmon EventCode=1
+(Image="*\\cmd.exe" OR Image="*\\powershell.exe")
+| where match(lower(ParentImage), "\\\\program files\\\\")
+| table _time host User IntegrityLevel ParentImage Image CommandLine</code></pre>
+        </section>
+
+        <section id="sentinel">
+          <h2>Microsoft Sentinel / Defender XDR</h2>
+
+          <h3>Unsigned DLL from an unexpected application path</h3>
+          <pre><code>DeviceImageLoadEvents
+| where FileName endswith ".dll"
+| where FolderPath !startswith @"C:\Windows\System32\"
+| where IsSigned == false or isempty(Signer)
+| project Timestamp, DeviceName, InitiatingProcessFileName,
+          InitiatingProcessFolderPath, FileName, FolderPath,
+          SHA1, IsSigned, Signer
+| order by Timestamp desc</code></pre>
+
+          <h3>DLL creation followed by load and suspicious child process</h3>
+          <pre><code>let lookback = 10m;
+let dllWrites =
+    DeviceFileEvents
+    | where ActionType in ("FileCreated", "FileModified")
+    | where FileName endswith ".dll"
+    | project DeviceId, DLLTime=Timestamp, DLLName=FileName,
+              DLLPath=FolderPath, SHA1;
+let dllLoads =
+    DeviceImageLoadEvents
+    | where FileName endswith ".dll"
+    | project DeviceId, LoadTime=Timestamp,
+              InitiatingProcessId, InitiatingProcessFileName,
+              LoadedDLL=FileName, LoadedPath=FolderPath;
+dllWrites
+| join kind=inner dllLoads on DeviceId
+| where LoadTime between (DLLTime .. DLLTime + lookback)
+| where DLLName == LoadedDLL
+| project DLLTime, LoadTime, DeviceId, InitiatingProcessFileName,
+          LoadedDLL, LoadedPath, SHA1</code></pre>
+
+          <h3>Application spawning a shell</h3>
+          <pre><code>DeviceProcessEvents
+| where FileName in~ ("cmd.exe", "powershell.exe", "pwsh.exe")
+| where InitiatingProcessFolderPath startswith @"C:\Program Files\"
+| project Timestamp, DeviceName, AccountName, FileName,
+          ProcessCommandLine, InitiatingProcessFileName,
+          InitiatingProcessFolderPath, InitiatingProcessIntegrityLevel</code></pre>
+        </section>
+
+        <section id="sigma">
+          <h2>Sigma Detection Concept</h2>
+          <pre><code>title: Suspicious Shell Spawned by Installed Application
+id: 2e32f4b8-f487-4c78-a7f1-4da6cfdc2410
+status: experimental
+description: Detects command shells launched by applications installed under Program Files.
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_parent:
+    ParentImage|startswith:
+      - 'C:\Program Files\'
+      - 'C:\Program Files (x86)\'
+  selection_child:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+  condition: selection_parent and selection_child
+falsepositives:
+  - Legitimate administrative or troubleshooting functions
+level: medium
+tags:
+  - attack.privilege-escalation
+  - attack.defense-evasion
+  - attack.t1574.001</code></pre>
+          <p>
+            This rule is intentionally broad and should be tuned to known application behavior, signer reputation,
+            integrity level, command line, and module-load evidence.
+          </p>
+        </section>
+
+        <section id="mitre">
+          <h2>MITRE ATT&CK Mapping</h2>
+          <table>
+            <thead><tr><th>Tactic</th><th>Technique</th><th>Relevance</th></tr></thead>
+            <tbody>
+              <tr><td>Privilege Escalation / Defense Evasion</td><td>T1574.001 — DLL Search Order Hijacking</td><td>Attacker-controlled DLL is selected before the intended library.</td></tr>
+              <tr><td>Execution</td><td>T1204.002 — Malicious File</td><td>Applicable when user action is required to launch the vulnerable application.</td></tr>
+              <tr><td>Command and Control / Execution</td><td>T1059.003 — Windows Command Shell</td><td>Relevant when cmd.exe is used after successful exploitation.</td></tr>
+              <tr><td>Persistence</td><td>Context dependent</td><td>Repeated application launch may re-trigger the malicious DLL.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="prevention">
+          <h2>Prevention and Secure Design</h2>
+
+          <div class="grid">
+            <div class="card">
+              <h3>For developers</h3>
+              <ul>
+                <li>Use absolute, canonical paths for private application DLLs.</li>
+                <li>Use <code>LoadLibraryEx</code> with restrictive search flags.</li>
+                <li>Call <code>SetDefaultDllDirectories</code> where compatible.</li>
+                <li>Use <code>AddDllDirectory</code> only for trusted protected locations.</li>
+                <li>Validate digital signatures for sensitive plug-ins or modules.</li>
+                <li>Do not allow elevated services to load dependencies from user-controlled paths.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>For administrators</h3>
+              <ul>
+                <li>Ensure Program Files and service directories are not writable by standard users.</li>
+                <li>Deploy WDAC or AppLocker where appropriate.</li>
+                <li>Monitor ACL drift on privileged application directories.</li>
+                <li>Use EDR controls to block untrusted modules in sensitive processes.</li>
+                <li>Remove unnecessary auto-elevation and privileged helper behavior.</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3>Example ACL review</h3>
+          <pre><code>icacls "C:\Program Files\Vendor\Application"</code></pre>
+          <p>
+            Standard users should generally have read and execute permissions, not create, modify, or delete rights
+            in a privileged application directory.
+          </p>
+        </section>
+
+        <section id="response">
+          <h2>Incident Response Workflow</h2>
+          <ol>
+            <li>Isolate the endpoint if exploitation is suspected.</li>
+            <li>Preserve the suspicious DLL, hashes, timestamps, signer data, and original path.</li>
+            <li>Capture the complete process tree and process tokens.</li>
+            <li>Identify all systems containing the same DLL hash or filename-path combination.</li>
+            <li>Review file creation events to determine how the DLL arrived.</li>
+            <li>Check whether the application directory ACL was modified.</li>
+            <li>Review service, scheduled-task, updater, and helper-process interactions.</li>
+            <li>Remove the malicious library and patch or reconfigure the vulnerable application.</li>
+            <li>Hunt for persistence, credential access, lateral movement, and follow-on execution.</li>
+          </ol>
+        </section>
+
+        <section id="lessons">
+          <h2>Lessons Learned</h2>
+          <p>
+            At first glance, the issue looked like a Windows privilege escalation flaw. The deeper investigation showed
+            that Windows was following its loader rules. The real weakness was the application's trust model.
+          </p>
+          <p>
+            The application trusted a filename without sufficiently constraining its source. A privileged component
+            then allowed code reached through that trust decision to cross a security boundary.
+          </p>
+          <blockquote>
+            Do not investigate only which executable ran. Investigate every library, plug-in, helper, and service that the executable trusted.
+          </blockquote>
+          <p>
+            That lesson continues to shape how I approach application security testing, endpoint telemetry, and threat
+            hunting. A signed executable can still become the vehicle for malicious code when it loads an untrusted module.
+          </p>
+        </section>
+
+        <section>
+          <h2>References</h2>
+          <ul>
+            <li>Microsoft Learn — Dynamic-Link Library Security</li>
+            <li>Microsoft Learn — Dynamic-Link Library Search Order</li>
+            <li>MITRE ATT&amp;CK — T1574.001 DLL Search Order Hijacking</li>
+            <li>Microsoft Sysinternals — Process Monitor</li>
+            <li>Microsoft Sysmon documentation</li>
+          </ul>
+          <div class="disclaimer">
+            This article is an anonymized case study based on a resolved QA finding. Product names, file names,
+            implementation details, and other identifying information have been omitted or generalized. Detection
+            examples are starting points and require validation and tuning before production use.
+          </div>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <strong>Gopichand Murari</strong>
+      <p>Cybersecurity · Threat Hunting · Detection Engineering · Windows Security</p>
+      <p><a href="/#research">← Back to Research</a></p>
+    </div>
+  </footer>
+</body>
+</html>
