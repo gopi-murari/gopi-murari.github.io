@@ -159,65 +159,66 @@ delivery surface : compromised gov hosts
 detection focus  : behavior + build chain</code></pre>
   </div>
 </div>
-  <div class="coming-grid">
-    <div class="featured-research reveal">
+<div class="featured-research reveal">
 
-  <div class="research-copy">
+    <div class="research-copy">
 
-    <span class="section-label">CASE FILE 003 / WINDOWS SECURITY</span>
+        <span class="section-label">
+            CASE FILE 003 / WINDOWS SECURITY
+        </span>
 
-    <h3>
-      When a Standard User Spawned an Administrator Command Prompt
-    </h3>
+        <h3>
+            DLL Hijacking: From Standard User to Administrator Shell
+        </h3>
 
-    <p class="research-subtitle">
-      Investigating DLL Search Order Hijacking in a Commercial Windows Application
-    </p>
+        <p class="research-subtitle">
+            A real-world investigation into unsafe DLL loading and privilege escalation.
+        </p>
 
-    <p>
-      A real-world QA investigation into unsafe DLL loading, application trust boundaries,
-      privilege misuse, Windows internals, threat hunting and defensive detection.
-    </p>
+        <p>
+            An anonymized engineering case study examining how a trusted Windows
+            application loaded an attacker-controlled DLL, crossed a privilege
+            boundary and exposed an elevated command shell.
+        </p>
 
-    <div class="research-tags">
-      <span>DLL Hijacking</span>
-      <span>Windows Internals</span>
-      <span>Privilege Escalation</span>
-      <span>Threat Hunting</span>
-      <span>Detection Engineering</span>
+        <div class="research-tags">
+            <span>DLL Hijacking</span>
+            <span>Windows Internals</span>
+            <span>Privilege Escalation</span>
+            <span>Threat Hunting</span>
+            <span>Detection Engineering</span>
+        </div>
+
+        <div class="research-actions">
+            <a href="/research/dll-hijacking/" class="btn primary">
+                Read Technical Analysis
+            </a>
+        </div>
+
     </div>
 
-    <div class="research-actions">
-      <a href="/research/dll-hijacking/" class="btn primary">
-        Read Technical Analysis
-      </a>
+    <div class="research-console">
+
+        <div class="terminal-top">
+            <i></i>
+            <i></i>
+            <i></i>
+            <span>dll-hijack-analysis</span>
+        </div>
+
+        <pre><code>$ analyze --case DLL-HIJACKING
+
+[01] Standard user launch   normal
+[02] Crafted DLL dropped    detected
+[03] Unsafe library load    confirmed
+[04] Trusted process abuse  observed
+[05] Elevated shell         reproduced
+
+technique  : T1574.001
+root cause : unsafe DLL resolution
+status     : resolved and remediated</code></pre>
+
     </div>
-
-  </div>
-
-  <div class="research-console">
-
-    <div class="terminal-top">
-      <i></i>
-      <i></i>
-      <i></i>
-      <span>dll-hijack-analysis</span>
-    </div>
-
-    <pre><code>$ analyze --case DLL-HIJACKING
-
-[01] Standard user launch       normal
-[02] Crafted DLL dropped        detected
-[03] Unsafe library load        confirmed
-[04] Trusted process abused     observed
-[05] Elevated shell             reproduced
-
-technique       : T1574.001
-root cause      : unsafe DLL resolution
-detection focus : image load + child process
-status          : resolved and remediated</code></pre>
-
-  </div>
 
 </div>
 </section>
