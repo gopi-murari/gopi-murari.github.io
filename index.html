@@ -159,8 +159,68 @@ delivery surface : compromised gov hosts
 detection focus  : behavior + build chain</code></pre>
   </div>
 </div>
-<div class="coming-grid"><article class="coming reveal"><span>COMING SOON</span><h3>DLL Hijacking Case Study</h3><p>Application startup abuse, privilege context, process analysis and defensive controls.</p></article><article class="coming reveal"><span>COMING SOON</span><h3>Ransomware Detection Engineering</h3><p>Behavior-focused Splunk, Sigma and Microsoft Sentinel detection content.</p></article></div>
-</div></section>
+  <div class="coming-grid">
+    <div class="featured-research reveal">
+
+  <div class="research-copy">
+
+    <span class="section-label">CASE FILE 003 / WINDOWS SECURITY</span>
+
+    <h3>
+      When a Standard User Spawned an Administrator Command Prompt
+    </h3>
+
+    <p class="research-subtitle">
+      Investigating DLL Search Order Hijacking in a Commercial Windows Application
+    </p>
+
+    <p>
+      A real-world QA investigation into unsafe DLL loading, application trust boundaries,
+      privilege misuse, Windows internals, threat hunting and defensive detection.
+    </p>
+
+    <div class="research-tags">
+      <span>DLL Hijacking</span>
+      <span>Windows Internals</span>
+      <span>Privilege Escalation</span>
+      <span>Threat Hunting</span>
+      <span>Detection Engineering</span>
+    </div>
+
+    <div class="research-actions">
+      <a href="/research/dll-hijacking/" class="btn primary">
+        Read Technical Analysis
+      </a>
+    </div>
+
+  </div>
+
+  <div class="research-console">
+
+    <div class="terminal-top">
+      <i></i>
+      <i></i>
+      <i></i>
+      <span>dll-hijack-analysis</span>
+    </div>
+
+    <pre><code>$ analyze --case DLL-HIJACKING
+
+[01] Standard user launch       normal
+[02] Crafted DLL dropped        detected
+[03] Unsafe library load        confirmed
+[04] Trusted process abused     observed
+[05] Elevated shell             reproduced
+
+technique       : T1574.001
+root cause      : unsafe DLL resolution
+detection focus : image load + child process
+status          : resolved and remediated</code></pre>
+
+  </div>
+
+</div>
+</section>
 
 <section id="certifications" class="section alt"><div class="shell"><div class="section-head reveal"><span>06 / CERTIFICATIONS</span><h2>Continuous learning across cybersecurity, networking and AI.</h2></div>
 <div class="cert-grid"><div class="cert reveal">Splunk Core Certified User</div><div class="cert reveal">CompTIA Security+</div><div class="cert reveal">CCNA</div><div class="cert reveal">Fortinet NSE 4</div><div class="cert reveal">eJPT</div><div class="cert reveal">Fortinet Certified Professional Security Operations</div><div class="cert reveal">AWS Solutions Architect</div><div class="cert reveal">Fortinet Zero Trust Access</div></div>
