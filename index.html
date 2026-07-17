@@ -104,6 +104,61 @@ items affected: 1,342
 correction    : 31 seconds
 mitre impact  : T1486</code></pre></div>
 </div>
+<div class="featured-research reveal">
+  <div class="research-copy">
+    <div class="case-label">
+      CASE FILE 002 · JULY 2026 · 18 MIN READ
+    </div>
+
+    <h3>PHANTOMENIGMA</h3>
+
+    <p class="research-subtitle">
+      When Trust Becomes the Initial Access Vector
+    </p>
+
+    <p>
+      A defender-focused analysis of compromised Brazilian government
+      infrastructure, Delphi/Inno installers, Electron and Node.js abuse,
+      rotating command-and-control infrastructure, and behavior-based
+      detection engineering.
+    </p>
+
+    <div class="tags">
+      <span>Threat Hunting</span>
+      <span>Node.js</span>
+      <span>MITRE ATT&amp;CK</span>
+      <span>Detection Engineering</span>
+    </div>
+
+    <div class="research-actions">
+      <a href="/research/phantomenigma/" class="btn primary">
+        Read Technical Analysis
+      </a>
+    </div>
+  </div>
+
+  <div class="research-console">
+    <div class="terminal-top">
+      <i></i>
+      <i></i>
+      <i></i>
+      <span>threat-chain</span>
+    </div>
+
+    <pre><code>$ analyze --case PHANTOMENIGMA
+
+[01] Trusted phishing     detected
+[02] Inno installer      confirmed
+[03] Electron backdoor   identified
+[04] C2 beaconing        observed
+[05] Persistence         detected
+
+sandbox sessions : 231
+beacon interval  : 180 seconds
+delivery surface : compromised gov hosts
+detection focus  : behavior + build chain</code></pre>
+  </div>
+</div>
 <div class="coming-grid"><article class="coming reveal"><span>COMING SOON</span><h3>DLL Hijacking Case Study</h3><p>Application startup abuse, privilege context, process analysis and defensive controls.</p></article><article class="coming reveal"><span>COMING SOON</span><h3>Ransomware Detection Engineering</h3><p>Behavior-focused Splunk, Sigma and Microsoft Sentinel detection content.</p></article></div>
 </div></section>
 
